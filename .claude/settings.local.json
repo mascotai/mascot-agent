@@ -8,7 +8,22 @@
       "mcp__mcp-router__fetch_generic_url_content",
       "Bash(npm run build:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:elizaos.github.io)",
+      "WebFetch(domain:eliza.how)",
+      "Bash(elizaos test:*)",
+      "Bash(npx elizaos test)",
+      "Bash(npx elizaos test e2e)",
+      "Bash(bun run:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(git clone:*)",
+      "Bash(git sparse-checkout:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": []
   }
