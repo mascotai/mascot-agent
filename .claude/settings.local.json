@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(elizaos dev)",
+      "Bash(git init:*)",
+      "mcp__mcp-router__search_generic_documentation",
+      "mcp__mcp-router__search_generic_code",
+      "mcp__mcp-router__fetch_generic_url_content",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": []
+  }
+}
