@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
-import './index.css';
 import React from 'react';
 import type { UUID } from '@elizaos/core';
+import { ConnectionsPanel } from './components/ConnectionsPanel';
 
 const queryClient = new QueryClient();
 
@@ -20,38 +20,35 @@ declare global {
 }
 
 /**
- * Main Example route component
+ * Main Application route component
  */
-function ExampleRoute() {
+function AppRoute() {
   const config = window.ELIZA_CONFIG;
   const agentId = config?.agentId;
 
-  // Apply dark mode to the root element
-  React.useEffect(() => {
-    document.documentElement.classList.add('dark');
-  }, []);
-
   if (!agentId) {
     return (
-      <div className="p-4 text-center">
-        <div className="text-red-600 font-medium">Error: Agent ID not found</div>
-        <div className="text-sm text-gray-600 mt-2">
+      <div>
+        <div>Error: Agent ID not found</div>
+        <div>
           The server should inject the agent ID configuration.
         </div>
       </div>
     );
   }
 
-  return <ExampleProvider agentId={agentId as UUID} />;
+  return <AppProvider agentId={agentId as UUID} />;
 }
 
 /**
- * Example provider component
+ * Main app provider component
  */
-function ExampleProvider({ agentId }: { agentId: UUID }) {
+function AppProvider({ agentId }: { agentId: UUID }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <div>Hello {agentId}</div>
+      <div>
+        <ConnectionsPanel agentId={agentId} />
+      </div>
     </QueryClientProvider>
   );
 }
@@ -59,7 +56,7 @@ function ExampleProvider({ agentId }: { agentId: UUID }) {
 // Initialize the application - no router needed for iframe
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  createRoot(rootElement).render(<ExampleRoute />);
+  createRoot(rootElement).render(<AppRoute />);
 }
 
 // Define types for integration with agent UI system
@@ -77,21 +74,27 @@ interface PanelProps {
 }
 
 /**
- * Example panel component for the plugin system
+ * Twitter connections panel component for the plugin system
  */
-const PanelComponent: React.FC<PanelProps> = ({ agentId }) => {
-  return <div>Helllo {agentId}!</div>;
+const TwitterConnectionsPanel: React.FC<PanelProps> = ({ agentId }) => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <div>
+        <ConnectionsPanel agentId={agentId as UUID} />
+      </div>
+    </QueryClientProvider>
+  );
 };
 
 // Export the panel configuration for integration with the agent UI
 export const panels: AgentPanel[] = [
   {
-    name: 'Example',
-    path: 'example',
-    component: PanelComponent,
-    icon: 'Book',
+    name: 'Twitter Connections',
+    path: 'twitter-connections',
+    component: TwitterConnectionsPanel,
+    icon: 'Link',
     public: false,
-    shortLabel: 'Example',
+    shortLabel: 'Twitter',
   },
 ];
 

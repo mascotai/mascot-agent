@@ -23,7 +23,16 @@
       "WebFetch(domain:api.github.com)",
       "Bash(git clone:*)",
       "Bash(git sparse-checkout:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "Bash(npx elizaos dev)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "mcp__mcp-router__resolve-library-id",
+      "mcp__mcp-router__get-library-docs",
+      "Bash(npx:*)"
     ],
     "deny": []
   }

@@ -112,3 +112,6 @@ memory.db
 # Test outputs
 test-results/
 playwright-report/
+plugin-mascot
+src/frontend/.eliza/
+

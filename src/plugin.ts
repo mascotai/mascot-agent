@@ -202,6 +202,10 @@ const frontPagePath = path.resolve(frontendDist, 'index.html');
 const assetsPath = path.resolve(frontendDist, 'assets');
 console.log('*** frontPagePath', frontPagePath);
 console.log('*** assetsPath', assetsPath);
+
+// Mock in-memory storage for connection state
+let mockConnections: any = {};
+
 /**
  * Definition of routes with type, path, and handler for each route.
  * Routes include fetching trending tokens, wallet information, tweets, sentiment analysis, and signals.
@@ -210,28 +214,39 @@ console.log('*** assetsPath', assetsPath);
 
 
 const plugin: Plugin = {
-  name: 'starter',
-  description: 'A starter plugin for Eliza',
-  // Set lowest priority so real models take precedence
-  priority: -1000,
+  name: 'twitter-auth',
+  description: 'Twitter authentication and connection management plugin',
+  // Set higher priority for auth plugin
+  priority: 100,
   config: {
-    EXAMPLE_PLUGIN_VARIABLE: process.env.EXAMPLE_PLUGIN_VARIABLE,
+    AUTH_ENCRYPTION_KEY: process.env.AUTH_ENCRYPTION_KEY,
+    TWITTER_API_KEY: process.env.TWITTER_API_KEY,
+    TWITTER_API_SECRET_KEY: process.env.TWITTER_API_SECRET_KEY,
   },
   async init(config: Record<string, string>) {
-    logger.info('*** Initializing starter plugin ***');
+    logger.info('*** Initializing Twitter Auth plugin ***');
     try {
-      const validatedConfig = await configSchema.parseAsync(config);
+      // Validate encryption key
+      const encryptionKey = config.AUTH_ENCRYPTION_KEY || process.env.AUTH_ENCRYPTION_KEY;
+      if (!encryptionKey) {
+        logger.warn('AUTH_ENCRYPTION_KEY not found - credential encryption will be disabled');
+      } else {
+        logger.info('✅ Auth encryption key configured');
+      }
 
-      // Set all environment variables at once
-      for (const [key, value] of Object.entries(validatedConfig)) {
-        if (value) process.env[key] = value;
+      // Validate Twitter API credentials
+      const twitterApiKey = config.TWITTER_API_KEY || process.env.TWITTER_API_KEY;
+      const twitterApiSecret = config.TWITTER_API_SECRET_KEY || process.env.TWITTER_API_SECRET_KEY;
+
+      if (twitterApiKey && twitterApiSecret) {
+        logger.info('✅ Twitter API credentials configured');
+      } else {
+        logger.info('ℹ️  Twitter API credentials not configured - set TWITTER_API_KEY and TWITTER_API_SECRET_KEY for Twitter authentication');
       }
+
+      logger.info('✅ Twitter Auth plugin initialized successfully');
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new Error(
-          `Invalid plugin configuration: ${error.errors.map((e) => e.message).join(', ')}`
-        );
-      }
+      logger.error('❌ Failed to initialize Twitter Auth plugin:', error);
       throw error;
     }
   },
@@ -257,59 +272,157 @@ const plugin: Plugin = {
     },
   },
   routes: [
-
-  {
-    type: 'GET',
-    path: '/goals',
-    name: "TEST",
-    public: true,
-
-    handler: async (_req: any, res: any, _runtime: IAgentRuntime) => {
-      const goalsHtmlPath = path.resolve(frontendDist, 'index.html');
-      if (fs.existsSync(goalsHtmlPath)) {
-        const htmlContent = fs.readFileSync(goalsHtmlPath, 'utf-8');
-        // Set Content-Type header to text/html
-        res.setHeader('Content-Type', 'text/html');
-        res.send(htmlContent);
-      } else {
-        res.status(404).send('Goals HTML file not found');
-      }
+    // Frontend routes
+    {
+      type: 'GET',
+      path: '/goals',
+      name: "TEST",
+      public: true,
+      handler: async (_req: any, res: any, _runtime: IAgentRuntime) => {
+        const goalsHtmlPath = path.resolve(frontendDist, 'index.html');
+        if (fs.existsSync(goalsHtmlPath)) {
+          const htmlContent = fs.readFileSync(goalsHtmlPath, 'utf-8');
+          res.setHeader('Content-Type', 'text/html');
+          res.send(htmlContent);
+        } else {
+          res.status(404).send('Goals HTML file not found');
+        }
+      },
     },
-  },
-  // Route to serve JS files from frontendDist/assets
-  {
-    type: 'GET',
-    path: '/assets/*',
-    public: true,
-    handler: async (req: any, res: any, _runtime: IAgentRuntime) => {
-      // Extract the relative path after '/assets/'
-      // const assetRelativePath = req.params[0]; // This captures everything after '/assets/'
-        const fullPath = req.path; // "/assets/main-BGv8Llvv.css"
-      const assetRelativePath = fullPath.replace(/^\/assets\//, '')
-      console.log('assetRelativePath:', assetRelativePath);
-      if (!assetRelativePath) {
-        return res.status(400).send('Invalid asset path');
-      }
-      // Construct the full path to the asset within the frontendDist/assets directory
-      const filePath = path.resolve(assetsPath, assetRelativePath); // Corrected base path
-
-      // Basic security check to prevent path traversal
-      if (!filePath.startsWith(assetsPath)) {
-        return res.status(403).send('Forbidden');
-      }
-
-      // Check if the file exists and serve it
-      if (fs.existsSync(filePath)) {
-        // Let express handle MIME types based on file extension
-        res.sendFile(filePath);
-      } else {
-        res.status(404).send('Asset not found');
-      }
+    {
+      type: 'GET',
+      path: '/assets/*',
+      public: true,
+      handler: async (req: any, res: any, _runtime: IAgentRuntime) => {
+        const fullPath = req.path;
+        const assetRelativePath = fullPath.replace(/^\/assets\//, '');
+        console.log('assetRelativePath:', assetRelativePath);
+        if (!assetRelativePath) {
+          return res.status(400).send('Invalid asset path');
+        }
+        
+        const filePath = path.resolve(assetsPath, assetRelativePath);
+        
+        if (!filePath.startsWith(assetsPath)) {
+          return res.status(403).send('Forbidden');
+        }
+        
+        if (fs.existsSync(filePath)) {
+          res.sendFile(filePath);
+        } else {
+          res.status(404).send('Asset not found');
+        }
+      },
     },
-  },
-
-
-
+    
+    // Mock Twitter Auth API routes
+    {
+      type: 'GET',
+      path: '/api/connections',
+      name: 'connections-list',
+      handler: async (req: any, res: any, runtime: IAgentRuntime) => {
+        const agentId = runtime.agentId;
+        console.log('Fetching connections for agentId:', agentId);
+        
+        // Get current connection state
+        const currentConnection = mockConnections[agentId] || {
+          service: 'twitter',
+          serviceName: 'twitter',
+          isConnected: false,
+          displayName: 'Twitter',
+          icon: 'twitter',
+          color: '#1DA1F2',
+          description: 'Connect to Twitter for posting and interactions',
+          lastChecked: new Date().toISOString(),
+        };
+        
+        const mockData = {
+          agentId: agentId,
+          connections: [currentConnection],
+          lastUpdated: new Date().toISOString(),
+        };
+        
+        res.json(mockData);
+      },
+    },
+    {
+      type: 'POST',
+      path: '/api/connections/twitter/disconnect',
+      name: 'twitter-disconnect',
+      public: true,
+      handler: async (req: any, res: any, runtime: IAgentRuntime) => {
+        const agentId = runtime.agentId;
+        console.log('Disconnecting Twitter for agentId:', agentId);
+        
+        // Update mock connection state
+        mockConnections[agentId] = {
+          service: 'twitter',
+          serviceName: 'twitter',
+          isConnected: false,
+          displayName: 'Twitter',
+          icon: 'twitter',
+          color: '#1DA1F2',
+          description: 'Connect to Twitter for posting and interactions',
+          lastChecked: new Date().toISOString(),
+        };
+        
+        res.json({
+          success: true,
+          message: 'Twitter connection disconnected successfully',
+        });
+      },
+    },
+    {
+      type: 'POST',
+      path: '/api/connections/twitter/test',
+      name: 'twitter-test',
+      public: true,
+      handler: async (req: any, res: any, runtime: IAgentRuntime) => {
+        const agentId = runtime.agentId;
+        console.log('Testing Twitter connection for agentId:', agentId);
+        
+        // Mock test response
+        res.json({
+          success: true,
+          message: 'Twitter connection test successful',
+        });
+      },
+    },
+    {
+      type: 'POST',
+      path: '/api/auth/twitter/connect',
+      name: 'twitter-connect',
+      public: true,
+      handler: async (req: any, res: any, runtime: IAgentRuntime) => {
+        const agentId = runtime.agentId;
+        const { returnUrl } = req.body;
+        console.log('Initiating Twitter connection for agentId:', agentId);
+        
+        // Simulate successful connection after a delay
+        setTimeout(() => {
+          mockConnections[agentId] = {
+            service: 'twitter',
+            serviceName: 'twitter',
+            isConnected: true,
+            username: 'demo_user',
+            userId: '123456789',
+            displayName: 'Twitter',
+            icon: 'twitter',
+            color: '#1DA1F2',
+            description: 'Connect to Twitter for posting and interactions',
+            lastChecked: new Date().toISOString(),
+          };
+        }, 2000);
+        
+        // Mock OAuth initiation response
+        res.json({
+          authUrl: 'https://twitter.com/oauth/authorize?mock=true',
+          state: 'mock-state-123',
+          oauth_token: 'mock-oauth-token',
+          oauth_token_secret: 'mock-oauth-secret',
+        });
+      },
+    },
   ],
   events: {
     MESSAGE_RECEIVED: [
