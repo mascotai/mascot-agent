@@ -32,7 +32,8 @@
       "Bash(ls:*)",
       "mcp__mcp-router__resolve-library-id",
       "mcp__mcp-router__get-library-docs",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Bash(npm run check-all:*)"
     ],
     "deny": []
   }

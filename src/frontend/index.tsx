@@ -1,8 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createRoot } from 'react-dom/client';
-import React from 'react';
-import type { UUID } from '@elizaos/core';
-import { ConnectionsPanel } from './components/ConnectionsPanel';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createRoot } from "react-dom/client";
+import React from "react";
+import type { UUID } from "@elizaos/core";
+import { ConnectionsPanel } from "./components/ConnectionsPanel";
+import { ThemeProvider } from "./components/theme-provider";
+import "./globals.css";
 
 const queryClient = new QueryClient();
 
@@ -30,9 +32,7 @@ function AppRoute() {
     return (
       <div>
         <div>Error: Agent ID not found</div>
-        <div>
-          The server should inject the agent ID configuration.
-        </div>
+        <div>The server should inject the agent ID configuration.</div>
       </div>
     );
   }
@@ -45,16 +45,20 @@ function AppRoute() {
  */
 function AppProvider({ agentId }: { agentId: UUID }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <div>
-        <ConnectionsPanel agentId={agentId} />
-      </div>
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme="dark" storageKey="eliza-ui-theme">
+      <QueryClientProvider client={queryClient}>
+        <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
+          <main>
+            <ConnectionsPanel agentId={agentId} />
+          </main>
+        </div>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 
 // Initialize the application - no router needed for iframe
-const rootElement = document.getElementById('root');
+const rootElement = document.getElementById("root");
 if (rootElement) {
   createRoot(rootElement).render(<AppRoute />);
 }
@@ -78,24 +82,28 @@ interface PanelProps {
  */
 const TwitterConnectionsPanel: React.FC<PanelProps> = ({ agentId }) => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <div>
-        <ConnectionsPanel agentId={agentId as UUID} />
-      </div>
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme="dark" storageKey="eliza-ui-theme">
+      <QueryClientProvider client={queryClient}>
+        <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
+          <main>
+            <ConnectionsPanel agentId={agentId as UUID} />
+          </main>
+        </div>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 
 // Export the panel configuration for integration with the agent UI
 export const panels: AgentPanel[] = [
   {
-    name: 'Twitter Connections',
-    path: 'twitter-connections',
+    name: "Twitter Connections",
+    path: "twitter-connections",
     component: TwitterConnectionsPanel,
-    icon: 'Link',
+    icon: "Link",
     public: false,
-    shortLabel: 'Twitter',
+    shortLabel: "Twitter",
   },
 ];
 
-export * from './utils';
+export * from "./utils";
