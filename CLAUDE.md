@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Overview
+
+This is a Mascot AI Agent project built on ElizaOS, featuring a custom Twitter authentication plugin that provides secure OAuth 1.0a authentication for Twitter connections. The project extends the ElizaOS framework with a custom authentication service and database schema for managing agent credentials.
+
 ## Environment Variables
 
 ### Authentication Service (plugin-mascot)
@@ -42,34 +46,45 @@ Note: The plugin-mascot uses the same Twitter API credential names as plugin-twi
 - `bun run cypress:component` - Run Cypress component tests
 - `bun run cypress:e2e` - Run Cypress e2e tests
 
+### Database Management
+- `bun run db:setup` - Set up database schema and initial data
+- `bun run db:setup:force` - Force database setup (ignores completion flag)
+
 ## Project Architecture
 
-This is an ElizaOS project starter that demonstrates the structure for creating AI agents. The architecture follows ElizaOS patterns:
+This is a Mascot AI Agent project built on ElizaOS, featuring a custom Twitter authentication plugin architecture designed for secure credential management and OAuth authentication flows.
 
 ### Core Structure
 - `src/index.ts` - Main project entry point, exports `projectAgent` with character and plugins
-- `src/character.ts` - Character definition (Eliza) with plugins, system prompt, bio, and conversation examples
-- `src/plugin.ts` - Example starter plugin with actions, providers, services, and event handlers
+- `src/character.ts` - Character definition (Eliza) with dynamic plugin loading based on environment variables
+- `src/plugin.ts` - Custom Twitter authentication plugin with services, routes, and database schema
+
+### Plugin Architecture: Twitter Authentication System
+The custom plugin (`twitter-auth`) provides:
+- **Authentication Service** (`src/services/auth.service.ts`): Manages encrypted credential storage and OAuth flows
+- **Encryption Service** (`src/services/encryption.service.ts`): Handles secure credential encryption/decryption
+- **OAuth Routes** (`src/routes/twitter-auth.ts`): Twitter OAuth 1.0a authentication endpoints
+- **Connection Management** (`src/routes/connections.ts`): Connection status and management APIs
+- **Database Schema** (`src/schema/`): Custom tables for service credentials and OAuth sessions
+
+### Database Architecture
+The project uses a custom database schema with:
+- **Service Credentials Table**: Stores encrypted credentials for different services
+- **OAuth Sessions Table**: Tracks OAuth authentication sessions with expiration
+- **Encryption Layer**: All credentials are encrypted using AES-256-GCM with configurable keys
+- **Database Setup**: Automated schema creation and migration with `src/scripts/db-setup.ts`
 
 ### Key Components
-- **ProjectAgent**: Main agent configuration combining character definition and initialization
-- **Character**: Defines personality, capabilities, and plugin loading based on environment variables
-- **Plugin System**: Extensible architecture for actions, providers, services, and API routes
-- **Testing**: Comprehensive setup with both component tests (Vitest) and e2e tests (ElizaOS runtime)
-
-### Plugin Architecture
-Plugins follow ElizaOS patterns and include:
-- **Actions**: Executable behaviors (e.g., `HELLO_WORLD` action)
-- **Providers**: Data sources for context
-- **Services**: Background processes and capabilities
-- **Events**: Handlers for runtime events (MESSAGE_RECEIVED, WORLD_CONNECTED, etc.)
-- **Models**: Custom model implementations for text generation
-- **Routes**: HTTP API endpoints
-- **Frontend**: React-based UI components for web interfaces, dashboards, and visual components (full plugins only)
+- **AuthService**: Main service for credential management with encryption/decryption
+- **TwitterOAuthUtils**: Utility functions for Twitter OAuth 1.0a flow
+- **Frontend Dashboard**: React-based connections management interface
+- **Route Security**: Protected routes with agent ID validation
+- **Session Management**: OAuth session tracking with automatic cleanup
 
 ### Environment-Based Plugin Loading
 The character configuration dynamically loads plugins based on available environment variables:
-- Core plugins: `@elizaos/plugin-sql`
+- Core plugins: `@elizaos/plugin-sql` (required for database operations)
+- Custom plugin: `twitter-auth` (for OAuth authentication)
 - AI providers: OpenAI, Anthropic, OpenRouter, Google GenAI, Ollama
 - Platform integrations: Discord, Twitter, Telegram
 - Bootstrap plugin (can be disabled with `IGNORE_BOOTSTRAP=true`)
@@ -80,23 +95,37 @@ The character configuration dynamically loads plugins based on available environ
 - `src/__tests__/cypress/` - Cypress component and e2e tests
 - Test utilities in `src/__tests__/utils/` and `src/__tests__/test-utils.ts`
 
-### Frontend Structure (Full Plugins)
-The `src/frontend/` folder contains React-based UI components for creating web interfaces and dashboards:
-- **Purpose**: Extends plugins beyond backend functionality with visual interfaces, interactive dashboards, and configuration screens
+### Frontend Structure
+The `src/frontend/` folder contains React-based UI components for connection management:
+- **Purpose**: Provides visual interface for managing Twitter connections and viewing authentication status
 - **Technology**: React with Vite build system, Tailwind CSS for styling
-- **Integration**: Integrates with the main ElizaOS dashboard to provide plugin-specific UI components
+- **Integration**: Integrates with the main ElizaOS dashboard through plugin routes
 - **Components**: 
   - `index.tsx` - Main entry point and React root
-  - `components/` - Reusable UI components
+  - `components/` - Connection management components
   - `utils/` - Frontend utilities and helpers
-- **Build**: Builds to `dist/frontend/` via Vite, served through plugin routes
-- **Perfect for**: Plugins that need web UI, dashboards, or visual components
+- **Build**: Builds to `dist/frontend/` via Vite, served through plugin routes at `/goals`
+- **Features**: Twitter connection status, OAuth flow initiation, connection management
 
 ## Development Notes
 
 The project uses Bun as the package manager and includes comprehensive testing infrastructure. The character is designed to be conversational and helpful, with plugin-based extensibility for various AI providers and platforms.
 
-When adding new functionality, follow the existing patterns in the starter plugin and ensure proper environment variable handling for conditional plugin loading.
+### Key Development Patterns
+- **Plugin Dependencies**: The custom `twitter-auth` plugin depends on `@elizaos/plugin-sql` and has priority 150 to ensure SQL initializes first
+- **Database First**: Database schema setup is handled manually in plugin initialization due to ElizaOS schema migration limitations
+- **Encryption**: All credentials are encrypted using AES-256-GCM with user-configurable keys
+- **OAuth Security**: OAuth sessions have 15-minute expiration with automatic cleanup
+- **Error Handling**: Comprehensive error handling with detailed logging throughout the authentication flow
+
+### Important Implementation Details
+- The authentication service uses upsert patterns to handle race conditions in credential storage
+- Twitter OAuth 1.0a flow is implemented with proper callback URL generation and state validation
+- Frontend assets are served through plugin routes with proper security validation
+- Database connection validation is performed before any credential operations
+- Session data is validated and cleaned up to prevent stale authentication attempts
+
+When adding new functionality, follow the existing patterns in the authentication plugin and ensure proper environment variable handling for conditional plugin loading.
 
 ## ElizaOS Framework Reference
 
@@ -329,3 +358,29 @@ const character = {
 - `bun run type-check`: TypeScript type checking
 - `bun run lint`: Format code
 - `bun run test:coverage`: Run tests with coverage
+
+## Critical Development Rules
+
+### Code Quality Standards
+- **No Stubs or Incomplete Code**: Never use stubs, fake code, or incomplete implementations
+- **Test-Driven Development**: Write tests before implementation when possible, models hallucinate frequently
+- **Comprehensive Error Handling**: All functions must have proper error handling with detailed logging
+- **Security First**: Never expose secrets, use proper encryption, validate all inputs
+
+### Architecture Patterns
+- **Flow - Always Plan First**: Research ALL related files, create complete change plan before coding
+- **Plugin Dependencies**: Respect plugin loading order (SQL first, then authentication, then platform plugins)
+- **Database Schema**: Use proper Drizzle ORM patterns with IDatabaseAdapter interface
+- **Service Architecture**: Services maintain state, actions access services, providers supply context
+
+### Package Management
+- **ALWAYS use `bun`** - Never use npm or pnpm
+- **Use `Bun.spawn()`** for process execution - Never use Node.js child_process APIs
+- **Follow ElizaOS patterns** - Use existing utilities and patterns from the framework
+
+### Testing Requirements
+- **All tests must pass** before considering any task complete
+- **Run `bun run type-check`** to verify TypeScript compilation
+- **Run `bun run lint`** to check code formatting
+- **Run `bun run test`** to verify all tests pass
+- **Test both component and e2e scenarios** for complete coverage

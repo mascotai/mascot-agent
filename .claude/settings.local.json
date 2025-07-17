@@ -33,7 +33,12 @@
       "mcp__mcp-router__resolve-library-id",
       "mcp__mcp-router__get-library-docs",
       "Bash(npx:*)",
-      "Bash(npm run check-all:*)"
+      "Bash(npm run check-all:*)",
+      "Bash(bun test:*)",
+      "mcp__mcp-router__get_file_contents",
+      "Bash(rm:*)",
+      "Bash(git worktree:*)",
+      "Bash(bun add:*)"
     ],
     "deny": []
   }

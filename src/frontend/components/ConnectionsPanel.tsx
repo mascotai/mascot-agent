@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UUID } from "@elizaos/core";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
+import { Twitter, MessageCircle, Hash, Zap } from "lucide-react";
 
 interface Connection {
   service: string;
@@ -33,27 +34,29 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
   const queryClient = useQueryClient();
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
 
-  // Fetch connections
+  // Fetch Twitter connection status only
   const {
     data: connectionsData,
-    isLoading,
-    error,
+    isLoading: isLoadingStatus,
+    error: statusError,
   } = useQuery<ConnectionsResponse>({
     queryKey: ["connections", agentId],
     queryFn: async () => {
-      const response = await fetch(`/api/connections`);
+      const response = await fetch(`/api/connections?agentId=${agentId}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch connections");
+        // If API fails, return null so we show default disconnected state
+        return null;
       }
       return response.json();
     },
     refetchInterval: 30000, // Refresh every 30 seconds
+    retry: false, // Don't retry on failure, just show disconnected
   });
 
   // Disconnect mutation
   const disconnectMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/connections/twitter/disconnect`, {
+    mutationFn: async (service: string) => {
+      const response = await fetch(`/api/connections/${service}/disconnect?agentId=${agentId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -62,7 +65,7 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to disconnect");
+        throw new Error(`Failed to disconnect from ${service}`);
       }
 
       return response.json();
@@ -74,8 +77,8 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
 
   // Test connection mutation
   const testConnectionMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/connections/twitter/test`, {
+    mutationFn: async (service: string) => {
+      const response = await fetch(`/api/connections/${service}/test?agentId=${agentId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -84,7 +87,7 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to test connection");
+        throw new Error(`Failed to test ${service} connection`);
       }
 
       return response.json();
@@ -94,11 +97,11 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
     },
   });
 
-  const handleConnect = async () => {
+  const handleConnect = async (service: string) => {
     setIsConnecting(true);
 
     try {
-      const response = await fetch("/api/auth/twitter/connect", {
+      const response = await fetch(`/api/auth/${service}/connect?agentId=${agentId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -109,7 +112,7 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to initiate Twitter connection");
+        throw new Error(`Failed to initiate ${service} connection`);
       }
 
       const data = await response.json();
@@ -122,68 +125,44 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
         });
       }, 2000);
     } catch (error) {
-      console.error("Connection failed:", error);
+      console.error(`${service} connection failed:`, error);
       setIsConnecting(false);
     }
   };
 
-  const handleDisconnect = async () => {
-    if (confirm("Are you sure you want to disconnect from Twitter?")) {
-      disconnectMutation.mutate();
+  const handleDisconnect = async (service: string) => {
+    if (confirm(`Are you sure you want to disconnect from ${service}?`)) {
+      disconnectMutation.mutate(service);
     }
   };
 
-  const handleTest = async () => {
-    testConnectionMutation.mutate();
+  const handleTest = async (service: string) => {
+    testConnectionMutation.mutate(service);
   };
 
-  if (isLoading) {
-    return (
-      <div>
-        <div></div>
-        <span>Loading connections...</span>
-      </div>
-    );
-  }
+  // Skip loading and error states - go straight to connections component
 
-  if (error) {
-    return (
-      <div>
-        <div>
-          Error loading connections
-        </div>
-        <div>
-          {error instanceof Error ? error.message : "Unknown error"}
-        </div>
-      </div>
-    );
-  }
+  const connections = connectionsData?.connections || [];
 
-  const twitterConnection = connectionsData?.connections.find(
-    (conn) => conn.service === "twitter",
-  );
-
-  if (!twitterConnection) {
-    return (
-      <div>
-        <div>
-          Twitter connection not available
-        </div>
-      </div>
-    );
+  // Only render if we have connection data
+  if (connections.length === 0) {
+    return null;
   }
 
   return (
     <div className="space-y-6 p-6">
-      <ConnectionCard
-        connection={twitterConnection}
-        onConnect={handleConnect}
-        onDisconnect={handleDisconnect}
-        onTest={handleTest}
-        isConnecting={isConnecting}
-        isDisconnecting={disconnectMutation.isPending}
-        isTesting={testConnectionMutation.isPending}
-      />
+      {connections.map((connection) => (
+        <ConnectionCard
+          key={connection.service}
+          connection={connection}
+          onConnect={() => handleConnect(connection.service)}
+          onDisconnect={() => handleDisconnect(connection.service)}
+          onTest={() => handleTest(connection.service)}
+          isConnecting={isConnecting}
+          isDisconnecting={disconnectMutation.isPending}
+          isTesting={testConnectionMutation.isPending}
+        />
+      ))}
     </div>
   );
 };
@@ -219,14 +198,27 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
     );
   };
 
+  const getServiceIcon = (service: string) => {
+    const iconProps = { className: "h-4 w-4" };
+    
+    switch (service) {
+      case "twitter":
+        return <Twitter {...iconProps} />;
+      case "discord":
+        return <Hash {...iconProps} />;
+      case "telegram":
+        return <MessageCircle {...iconProps} />;
+      default:
+        return <Zap {...iconProps} />;
+    }
+  };
+
   return (
     <div className="border rounded-lg p-4 bg-card hover:bg-accent/5 transition-colors group">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-md bg-muted">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-              <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>
-            </svg>
+            {getServiceIcon(connection.service)}
           </div>
           <div>
             <div className="flex items-center gap-2">

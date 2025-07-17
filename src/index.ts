@@ -4,7 +4,7 @@ import {
   type Project,
   type ProjectAgent,
 } from "@elizaos/core";
-import starterPlugin from "./plugin.ts";
+import twitterAuthPlugin from "./plugin.ts";
 import { character } from "./character.ts";
 
 const initCharacter = ({ runtime }: { runtime: IAgentRuntime }) => {
@@ -15,7 +15,7 @@ const initCharacter = ({ runtime }: { runtime: IAgentRuntime }) => {
 export const projectAgent: ProjectAgent = {
   character,
   init: async (runtime: IAgentRuntime) => await initCharacter({ runtime }),
-  plugins: [starterPlugin],
+  plugins: [twitterAuthPlugin],
 };
 const project: Project = {
   agents: [projectAgent],

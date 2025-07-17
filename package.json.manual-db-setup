@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "db:setup": "bun run src/scripts/db-setup.ts",
+    "db:setup:force": "TWITTER_AUTH_DB_SETUP_COMPLETE=false bun run src/scripts/db-setup.ts"
+  }
+}

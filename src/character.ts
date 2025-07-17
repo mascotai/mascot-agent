@@ -11,6 +11,9 @@ export const character: Character = {
   plugins: [
     // Core plugins first
     '@elizaos/plugin-sql',
+    
+    // Custom plugins that depend on SQL
+    'twitter-auth',
 
     // Text-only plugins (no embedding support)
     ...(process.env.ANTHROPIC_API_KEY?.trim() ? ['@elizaos/plugin-anthropic'] : []),
