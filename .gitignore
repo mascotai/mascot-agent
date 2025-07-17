@@ -115,3 +115,4 @@ playwright-report/
 plugin-mascot
 src/frontend/.eliza/
 
+.eliza/.elizadb

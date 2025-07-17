@@ -27,7 +27,7 @@ export const connectionsRoutes = [
         }
 
         // Get status for all supported services
-        const supportedServices: ServiceName[] = ["twitter", "discord", "telegram"];
+        const supportedServices: ServiceName[] = ["twitter"];
 
         const getServiceMetadata = (service: ServiceName) => {
           const metadata = {
@@ -35,7 +35,8 @@ export const connectionsRoutes = [
               displayName: "Twitter/X",
               icon: "twitter",
               color: "#1DA1F2",
-              description: "Connect to post tweets and interact with your audience",
+              description:
+                "Connect to post tweets and interact with your audience",
             },
             discord: {
               displayName: "Discord",
@@ -50,12 +51,14 @@ export const connectionsRoutes = [
               description: "Connect to Telegram chats and channels",
             },
           };
-          return metadata[service] || {
-            displayName: service,
-            icon: service,
-            color: "#6B7280",
-            description: `Connect to ${service}`,
-          };
+          return (
+            metadata[service] || {
+              displayName: service,
+              icon: service,
+              color: "#6B7280",
+              description: `Connect to ${service}`,
+            }
+          );
         };
 
         const connections = await Promise.all(

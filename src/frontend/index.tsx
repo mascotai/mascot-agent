@@ -47,7 +47,10 @@ function AppProvider({ agentId }: { agentId: UUID }) {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="eliza-ui-theme">
       <QueryClientProvider client={queryClient}>
-        <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
+        <div
+          className="min-h-screen"
+          style={{ backgroundColor: "hsl(var(--background))" }}
+        >
           <main>
             <ConnectionsPanel agentId={agentId} />
           </main>
@@ -84,7 +87,10 @@ const TwitterConnectionsPanel: React.FC<PanelProps> = ({ agentId }) => {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="eliza-ui-theme">
       <QueryClientProvider client={queryClient}>
-        <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
+        <div
+          className="min-h-screen"
+          style={{ backgroundColor: "hsl(var(--background))" }}
+        >
           <main>
             <ConnectionsPanel agentId={agentId as UUID} />
           </main>

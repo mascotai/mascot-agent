@@ -27,8 +27,11 @@ export interface OAuthSession {
   agentId: UUID;
   serviceName: ServiceName;
   state: string;
+  status: "pending" | "authorized" | "expired" | "canceled" | "failed";
   codeVerifier?: string;
   returnUrl?: string;
+  authorizationCode?: string;
+  errorMessage?: string;
   expiresAt: Date;
   createdAt: Date;
 }

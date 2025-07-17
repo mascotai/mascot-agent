@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UUID } from "@elizaos/core";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
-import { Twitter, MessageCircle, Hash, Zap } from "lucide-react";
+import { Twitter } from "lucide-react";
 
 interface Connection {
   service: string;
@@ -56,13 +56,16 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
   // Disconnect mutation
   const disconnectMutation = useMutation({
     mutationFn: async (service: string) => {
-      const response = await fetch(`/api/connections/${service}/disconnect?agentId=${agentId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `/api/connections/${service}/disconnect?agentId=${agentId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
         },
-        body: JSON.stringify({}),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to disconnect from ${service}`);
@@ -78,13 +81,16 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
   // Test connection mutation
   const testConnectionMutation = useMutation({
     mutationFn: async (service: string) => {
-      const response = await fetch(`/api/connections/${service}/test?agentId=${agentId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `/api/connections/${service}/test?agentId=${agentId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
         },
-        body: JSON.stringify({}),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to test ${service} connection`);
@@ -101,15 +107,18 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
     setIsConnecting(true);
 
     try {
-      const response = await fetch(`/api/auth/${service}/connect?agentId=${agentId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `/api/auth/${service}/connect?agentId=${agentId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            returnUrl: window.location.href,
+          }),
         },
-        body: JSON.stringify({
-          returnUrl: window.location.href,
-        }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to initiate ${service} connection`);
@@ -117,13 +126,65 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
 
       const data = await response.json();
 
-      // For mock implementation, simulate successful connection after 2 seconds
-      setTimeout(() => {
+      // Open OAuth URL in new window if provided
+      if (data.authUrl) {
+        // Store state for return handling
+        if (data.state) {
+          sessionStorage.setItem('oauth_state', data.state);
+        }
+        
+        // Open OAuth in new window/tab to avoid iframe restrictions
+        const authWindow = window.open(
+          data.authUrl,
+          'oauth_popup',
+          'width=600,height=700,scrollbars=yes,resizable=yes'
+        );
+        
+        // Monitor the popup for completion
+        const checkClosed = setInterval(() => {
+          if (authWindow?.closed) {
+            clearInterval(checkClosed);
+            setIsConnecting(false);
+            // Refresh connection status after OAuth completes
+            queryClient.invalidateQueries({
+              queryKey: ["connections", agentId],
+            });
+          }
+        }, 1000);
+        
+        // Also listen for message from popup (if callback posts back)
+        const messageListener = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) {
+            return;
+          }
+          
+          if (event.data.type === 'OAUTH_SUCCESS') {
+            authWindow?.close();
+            clearInterval(checkClosed);
+            setIsConnecting(false);
+            queryClient.invalidateQueries({
+              queryKey: ["connections", agentId],
+            });
+            window.removeEventListener('message', messageListener);
+          }
+        };
+        
+        window.addEventListener('message', messageListener);
+        
+        // Cleanup if still connecting after 5 minutes
+        setTimeout(() => {
+          if (authWindow && !authWindow.closed) {
+            authWindow.close();
+          }
+          clearInterval(checkClosed);
+          setIsConnecting(false);
+          window.removeEventListener('message', messageListener);
+        }, 300000); // 5 minutes
+        
+      } else {
+        // No auth URL provided, reset connecting state
         setIsConnecting(false);
-        queryClient.invalidateQueries({
-          queryKey: ["connections", agentId],
-        });
-      }, 2000);
+      }
     } catch (error) {
       console.error(`${service} connection failed:`, error);
       setIsConnecting(false);
@@ -200,16 +261,12 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
 
   const getServiceIcon = (service: string) => {
     const iconProps = { className: "h-4 w-4" };
-    
+
     switch (service) {
       case "twitter":
         return <Twitter {...iconProps} />;
-      case "discord":
-        return <Hash {...iconProps} />;
-      case "telegram":
-        return <MessageCircle {...iconProps} />;
       default:
-        return <Zap {...iconProps} />;
+        return <Twitter {...iconProps} />;
     }
   };
 
@@ -222,12 +279,14 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-medium text-sm">{connection.displayName}</span>
+              <span className="font-medium text-sm">
+                {connection.displayName}
+              </span>
               {getStatusBadge(connection.isConnected)}
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {connection.isConnected ? (
             <Button

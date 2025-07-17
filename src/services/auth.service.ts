@@ -8,9 +8,9 @@ import type {
   ConnectionStatus,
   TwitterCredentials,
 } from "../types/auth.types";
-import { serviceCredentialsTable, oauthSessionsTable } from "../schema";
+import { serviceCredentialsTable } from "../schema/service-credentials";
 import { eq, and, sql } from "drizzle-orm";
-import { setupDatabase } from "../scripts/db-setup";
+import { LRUCache } from "lru-cache";
 
 /**
  * Authentication service for managing agent credentials to external services
@@ -19,18 +19,28 @@ export class AuthService extends Service implements IAuthService {
   static serviceType = "auth";
 
   private encryptionService: EncryptionService;
+  private oauthCache: LRUCache<string, any>;
+
   private get db() {
-    // Access the database through the SQL plugin service
-    const sqlService = this.runtime.getService("sql");
-    if (!sqlService) {
-      throw new Error("SQL service not available");
+    // Access the database through the runtime (ElizaOS standard pattern)
+    if (!this.runtime.db) {
+      logger.error("Database not available - check that @elizaos/plugin-sql is loaded");
+      throw new Error("Database not available - check that @elizaos/plugin-sql is loaded");
     }
-    return (sqlService as any).db;
+    return this.runtime.db;
   }
+
 
   constructor(runtime: IAgentRuntime) {
     super(runtime);
     this.encryptionService = new EncryptionService();
+    
+    // Initialize unified OAuth cache with 15 minute TTL
+    // Uses single cache with prefixed keys for both sessions and temp credentials
+    this.oauthCache = new LRUCache<string, any>({
+      max: 1000,
+      ttl: 1000 * 60 * 15, // 15 minutes
+    });
   }
 
   get capabilityDescription(): string {
@@ -41,16 +51,10 @@ export class AuthService extends Service implements IAuthService {
     logger.info("🔐 Starting Auth service...");
 
     const service = new AuthService(runtime);
-    
-    // TODO: Remove this manual database setup once ElizaOS plugin schema migration is fixed
-    try {
-      await setupDatabase();
-      logger.info("✅ Database setup completed for Auth service");
-    } catch (error) {
-      logger.error("❌ Failed to setup database for Auth service:", error);
-      throw error;
-    }
-    
+
+    // Database tables are created automatically by ElizaOS plugin system
+    logger.info("✅ Auth service started - tables handled by plugin system");
+
     return service;
   }
 
@@ -87,10 +91,6 @@ export class AuthService extends Service implements IAuthService {
       `Storing credentials for agent ${agentId} and service ${service}`,
     );
 
-    if (!this.db) {
-      throw new Error("Database not available");
-    }
-
     try {
       // Encrypt credentials
       const encryptedCredentials = this.encryptionService.encrypt(
@@ -124,8 +124,10 @@ export class AuthService extends Service implements IAuthService {
         }
       } catch (insertError) {
         // Handle potential race condition where another process inserted between update and insert
-        logger.warn(`Potential race condition when storing credentials for ${service}, retrying update...`);
-        
+        logger.warn(
+          `Potential race condition when storing credentials for ${service}, retrying update...`,
+        );
+
         await this.db
           .update(serviceCredentialsTable)
           .set({
@@ -155,11 +157,6 @@ export class AuthService extends Service implements IAuthService {
     agentId: UUID,
     service: ServiceName,
   ): Promise<Record<string, any> | null> {
-    if (!this.db) {
-      logger.error("Database not available");
-      return null;
-    }
-
     try {
       const result = await this.db
         .select()
@@ -258,6 +255,17 @@ export class AuthService extends Service implements IAuthService {
       };
     } catch (error) {
       logger.error(`❌ Failed to get connection status for ${service}:`, error);
+      
+      // If database is not available, return disconnected status
+      if (error instanceof Error && error.message.includes("Database not available")) {
+        logger.warn(`Database not available for ${service} connection status - returning disconnected`);
+        return {
+          serviceName: service,
+          isConnected: false,
+          lastChecked: new Date(),
+        };
+      }
+      
       return {
         serviceName: service,
         isConnected: false,
@@ -267,7 +275,7 @@ export class AuthService extends Service implements IAuthService {
   }
 
   /**
-   * Create OAuth session for tracking
+   * Create OAuth session for tracking using cache
    */
   async createOAuthSession(
     agentId: UUID,
@@ -276,17 +284,24 @@ export class AuthService extends Service implements IAuthService {
     returnUrl?: string,
   ): Promise<void> {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const cacheKey = `session:${agentId}:${service}:${state}`;
 
     try {
-      await this.db.insert(oauthSessionsTable).values({
+      const sessionData: OAuthSession = {
+        id: crypto.randomUUID(),
         agentId,
         serviceName: service,
         state,
+        status: "pending",
         returnUrl,
         expiresAt,
-      });
+        createdAt: new Date(),
+      };
 
-      logger.info(`✅ OAuth session created for ${service}`);
+      // Store in cache (TTL handled by LRU cache)
+      this.oauthCache.set(cacheKey, sessionData);
+
+      logger.info(`✅ OAuth session created for ${service} (cached)`);
     } catch (error) {
       logger.error(`❌ Failed to create OAuth session for ${service}:`, error);
       throw error;
@@ -294,39 +309,29 @@ export class AuthService extends Service implements IAuthService {
   }
 
   /**
-   * Validate OAuth session
+   * Validate OAuth session using cache
    */
   async validateOAuthSession(
     agentId: UUID,
     service: ServiceName,
     state: string,
   ): Promise<OAuthSession | null> {
+    const cacheKey = `session:${agentId}:${service}:${state}`;
+
     try {
-      const result = await this.db
-        .select()
-        .from(oauthSessionsTable)
-        .where(
-          and(
-            eq(oauthSessionsTable.agentId, agentId),
-            eq(oauthSessionsTable.serviceName, service),
-            eq(oauthSessionsTable.state, state),
-          ),
-        )
-        .limit(1);
+      const sessionData = this.oauthCache.get(cacheKey);
 
-      if (result.length === 0) {
+      if (!sessionData) {
         return null;
       }
 
-      const session = result[0];
-
-      // Check if session is expired
-      if (new Date() > session.expiresAt) {
-        await this.cleanupExpiredSessions();
+      // Check if session is expired (double-check even with TTL)
+      if (new Date() > sessionData.expiresAt) {
+        this.oauthCache.delete(cacheKey);
         return null;
       }
 
-      return session;
+      return sessionData;
     } catch (error) {
       logger.error(`❌ Failed to validate OAuth session:`, error);
       return null;
@@ -334,16 +339,92 @@ export class AuthService extends Service implements IAuthService {
   }
 
   /**
-   * Clean up expired OAuth sessions
+   * Clean up expired OAuth sessions (cache handles TTL automatically)
    */
   async cleanupExpiredSessions(): Promise<void> {
     try {
-      await this.db.delete(oauthSessionsTable).where(sql`expires_at < NOW()`);
-
-      logger.info("✅ Expired OAuth sessions cleaned up");
+      // With cache TTL, expired sessions are automatically removed
+      // This method is kept for compatibility but does nothing since cache handles cleanup
+      logger.info(
+        "✅ Expired OAuth sessions cleaned up (cache TTL handles automatic cleanup)",
+      );
     } catch (error) {
       logger.error("❌ Failed to cleanup expired OAuth sessions:", error);
     }
+  }
+
+  /**
+   * Update OAuth session status in cache
+   */
+  async updateOAuthSession(
+    agentId: UUID,
+    service: ServiceName,
+    state: string,
+    updates: Partial<OAuthSession>,
+  ): Promise<void> {
+    const cacheKey = `session:${agentId}:${service}:${state}`;
+
+    try {
+      const sessionData = this.oauthCache.get(cacheKey);
+
+      if (!sessionData) {
+        logger.warn(`OAuth session not found for update: ${cacheKey}`);
+        return;
+      }
+
+      const updatedSession = { ...sessionData, ...updates };
+
+      // Check if session is still valid
+      if (new Date() < updatedSession.expiresAt) {
+        this.oauthCache.set(cacheKey, updatedSession);
+        logger.info(`✅ OAuth session updated for ${service}`);
+      } else {
+        // Session expired, remove it
+        this.oauthCache.delete(cacheKey);
+        logger.warn(`OAuth session expired during update for ${service}`);
+      }
+    } catch (error) {
+      logger.error(`❌ Failed to update OAuth session for ${service}:`, error);
+    }
+  }
+
+  /**
+   * Delete OAuth session from cache
+   */
+  async deleteOAuthSession(
+    agentId: UUID,
+    service: ServiceName,
+    state: string,
+  ): Promise<void> {
+    const cacheKey = `session:${agentId}:${service}:${state}`;
+
+    try {
+      this.oauthCache.delete(cacheKey);
+      logger.info(`✅ OAuth session deleted for ${service}`);
+    } catch (error) {
+      logger.error(`❌ Failed to delete OAuth session for ${service}:`, error);
+    }
+  }
+
+  /**
+   * Store temporary credentials in cache
+   */
+  storeTempCredentials(key: string, credentials: any): void {
+    this.oauthCache.set(`temp:${key}`, credentials);
+  }
+
+  /**
+   * Get temporary credentials from cache
+   */
+  getTempCredentials(key: string): any {
+    return this.oauthCache.get(`temp:${key}`);
+  }
+
+  /**
+   * Delete temporary credentials from cache
+   */
+  deleteTempCredentials(key: string): void {
+    this.oauthCache.delete(`temp:${key}`);
   }
 
   // Placeholder methods for OAuth flows - will be implemented by service-specific handlers

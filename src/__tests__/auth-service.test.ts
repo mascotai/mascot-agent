@@ -9,11 +9,11 @@ describe("AuthService", () => {
       const mockDb = {
         execute: mock().mockResolvedValue(undefined),
       };
-      
+
       const mockDatabaseAdapter = {
         db: mockDb,
       };
-      
+
       const mockRuntime = {
         databaseAdapter: mockDatabaseAdapter,
       } as unknown as IAgentRuntime;
@@ -21,8 +21,10 @@ describe("AuthService", () => {
       try {
         const service = await AuthService.start(mockRuntime);
         expect(service).toBeDefined();
-        expect(service.capabilityDescription).toBe("Authentication service for managing agent credentials to external services");
-        
+        expect(service.capabilityDescription).toBe(
+          "Authentication service for managing agent credentials to external services",
+        );
+
         // Verify database connection was tested
         expect(mockDb.execute).toHaveBeenCalled();
       } catch (error) {
@@ -41,7 +43,9 @@ describe("AuthService", () => {
         expect(true).toBe(false); // Should not reach here
       } catch (error) {
         expect(error).toBeDefined();
-        expect((error as Error).message).toBe("Database adapter not available after waiting");
+        expect((error as Error).message).toBe(
+          "Database adapter not available after waiting",
+        );
       }
     }, 10000); // 10 second timeout
   });

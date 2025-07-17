@@ -252,7 +252,8 @@ describe("Project Starter Character Plugin Ordering", () => {
 
       plugins.forEach((plugin) => {
         expect(typeof plugin).toBe("string");
-        expect(plugin).toMatch(/^@elizaos\/plugin-/);
+        // Allow both ElizaOS plugins and custom plugins
+        expect(plugin).toMatch(/^(@elizaos\/plugin-|twitter-auth)/);
       });
     });
 

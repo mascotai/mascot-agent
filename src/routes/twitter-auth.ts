@@ -34,11 +34,14 @@ export const twitterAuthRoutes = [
         const consumerSecret = process.env.TWITTER_API_SECRET_KEY;
 
         if (!consumerKey || !consumerSecret) {
+          logger.error("Twitter API credentials not found in environment");
           return res.status(500).json({
             error:
               "Twitter API credentials not configured. Please set TWITTER_API_KEY and TWITTER_API_SECRET_KEY.",
           });
         }
+
+        logger.info(`Using Twitter API credentials - Key: ${consumerKey?.substring(0, 5)}..., Secret: ${consumerSecret?.substring(0, 5)}...`);
 
         // Initialize Twitter API client for OAuth
         const twitterApi = new TwitterApi({
@@ -46,20 +49,41 @@ export const twitterAuthRoutes = [
           appSecret: consumerSecret,
         });
 
-        // Generate callback URL
-        const callbackUrl = TwitterOAuthUtils.generateCallbackUrl(
-          `${req.protocol}://${req.get("host")}`
-        );
-
-        // Get request token
-        const authLink = await twitterApi.generateAuthLink(callbackUrl, {
-          linkMode: "authorize", // Use 'authorize' for web apps
-        });
-
-        // Generate state for security
+        // Generate state for security first
         const state = generateOAuthState();
 
-        // Store OAuth session
+        // Generate callback URL with agentId and state
+        const callbackUrl = TwitterOAuthUtils.generateCallbackUrl(
+          `${req.protocol}://${req.get("host")}`,
+          agentId,
+          state
+        );
+
+        logger.info(`Generated callback URL: ${callbackUrl}`);
+
+        // Get request token
+        logger.info("Requesting Twitter OAuth request token...");
+        logger.info(`Request details - Callback: ${callbackUrl}, Consumer Key: ${consumerKey?.substring(0, 10)}...`);
+        
+        let authLink;
+        try {
+          authLink = await twitterApi.generateAuthLink(callbackUrl, {
+            linkMode: "authorize", // Use 'authorize' for web apps
+          });
+          
+          logger.info(`Twitter OAuth request successful - token: ${authLink.oauth_token?.substring(0, 10)}...`);
+        } catch (twitterError: any) {
+          logger.error("Twitter API Error Details:", {
+            message: twitterError.message,
+            code: twitterError.code,
+            status: twitterError.status,
+            data: twitterError.data,
+            errors: twitterError.errors,
+          });
+          throw twitterError;
+        }
+
+        // Store OAuth session with temporary credentials
         await authService.createOAuthSession(
           agentId,
           "twitter",
@@ -67,19 +91,23 @@ export const twitterAuthRoutes = [
           returnUrl,
         );
 
-        // Store temporary credentials securely in session
-        // In production, this should be stored in Redis or database
-        const sessionData = {
+        // Store temporary credentials securely in cache
+        // Use a separate cache key for OAuth token secrets
+        const tempCredentialsKey = `${agentId}:twitter:temp:${authLink.oauth_token}`;
+        const tempCredentials = {
           oauth_token_secret: authLink.oauth_token_secret,
           agentId,
+          createdAt: new Date().toISOString(),
         };
 
-        // For now, we'll return the auth URL and let the frontend handle the redirect
+        // Store temp credentials with 15 minute TTL (matching OAuth session)
+        authService.storeTempCredentials(tempCredentialsKey, tempCredentials);
+
+        // Return auth URL and state - no sensitive data in response
         res.json({
           authUrl: authLink.url,
           state,
           oauth_token: authLink.oauth_token,
-          sessionData, // This would be stored server-side in production
         });
       } catch (error) {
         logger.error("Twitter OAuth initiation failed:", error);
@@ -97,17 +125,23 @@ export const twitterAuthRoutes = [
     type: "GET" as const,
     handler: async (req: any, res: any) => {
       try {
-        const { oauth_token, oauth_verifier, state, agentId, oauth_token_secret } = req.query;
+        const { oauth_token, oauth_verifier, state, agentId } = req.query;
 
-        if (!TwitterOAuthUtils.validateCallbackParams({ oauth_token, oauth_verifier, state })) {
+        if (
+          !TwitterOAuthUtils.validateCallbackParams({
+            oauth_token,
+            oauth_verifier,
+            state,
+          })
+        ) {
           return res.status(400).json({
             error: "Missing required OAuth parameters",
           });
         }
 
-        if (!agentId || !oauth_token_secret) {
+        if (!agentId) {
           return res.status(400).json({
-            error: "Missing session data - Agent ID and token secret required",
+            error: "Missing Agent ID",
           });
         }
 
@@ -128,6 +162,18 @@ export const twitterAuthRoutes = [
             error: "Invalid or expired OAuth session",
           });
         }
+
+        // Retrieve temporary credentials from cache
+        const tempCredentialsKey = `${agentId}:twitter:temp:${oauth_token}`;
+        const tempCredentials = authService.getTempCredentials(tempCredentialsKey);
+
+        if (!tempCredentials) {
+          return res.status(400).json({
+            error: "Temporary credentials not found or expired",
+          });
+        }
+
+        const { oauth_token_secret } = tempCredentials;
 
         // Get Twitter API credentials
         const consumerKey = process.env.TWITTER_API_KEY;
@@ -174,10 +220,60 @@ export const twitterAuthRoutes = [
         // Store credentials
         await authService.storeCredentials(agentId, "twitter", credentials);
 
-        // Redirect to success page or return JSON
-        if (session.returnUrl) {
+        // Clean up temporary credentials from cache
+        authService.deleteTempCredentials(tempCredentialsKey);
+
+        // Update OAuth session status to authorized
+        await authService.updateOAuthSession(agentId, "twitter", state, {
+          status: "authorized",
+          authorizationCode: oauth_verifier,
+        });
+
+        // Handle popup OAuth completion
+        if (session.returnUrl && session.returnUrl.includes('/goals')) {
+          // For popup OAuth, return an HTML page that notifies parent and closes
+          const successHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Twitter Connection Successful</title>
+              <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                .success { color: #22c55e; font-size: 18px; }
+                .loading { color: #6b7280; }
+              </style>
+            </head>
+            <body>
+              <div class="success">✅ Twitter connection successful!</div>
+              <div class="loading">This window will close automatically...</div>
+              <script>
+                // Notify parent window of success
+                if (window.opener) {
+                  window.opener.postMessage({ 
+                    type: 'OAUTH_SUCCESS', 
+                    service: 'twitter',
+                    user: {
+                      id: '${user.data.id}',
+                      username: '${user.data.username}',
+                      name: '${user.data.name || ''}'
+                    }
+                  }, window.location.origin);
+                }
+                // Close popup after short delay
+                setTimeout(() => {
+                  window.close();
+                }, 2000);
+              </script>
+            </body>
+            </html>
+          `;
+          res.setHeader('Content-Type', 'text/html');
+          res.send(successHtml);
+        } else if (session.returnUrl) {
+          // Regular redirect for non-popup flows
           res.redirect(`${session.returnUrl}?success=true&service=twitter`);
         } else {
+          // JSON response for API usage
           res.json({
             success: true,
             user: {
@@ -189,6 +285,29 @@ export const twitterAuthRoutes = [
         }
       } catch (error) {
         logger.error("Twitter OAuth callback failed:", error);
+
+        // Clean up temporary credentials on error
+        try {
+          const { oauth_token, agentId, state } = req.query;
+          if (oauth_token && agentId) {
+            const tempCredentialsKey = `${agentId}:twitter:temp:${oauth_token}`;
+            const authService = req.runtime?.getService("auth") as AuthService;
+            authService?.deleteTempCredentials(tempCredentialsKey);
+          }
+
+          // Update OAuth session status to failed
+          if (agentId && state) {
+            const authService = req.runtime?.getService("auth") as AuthService;
+            await authService?.updateOAuthSession(agentId, "twitter", state, {
+              status: "failed",
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+            });
+          }
+        } catch (cleanupError) {
+          logger.error("Failed to cleanup after OAuth error:", cleanupError);
+        }
+
         res.status(500).json({
           error: "Failed to complete Twitter authentication",
           details: TwitterOAuthUtils.parseTwitterError(error),

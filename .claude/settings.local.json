@@ -38,7 +38,9 @@
       "mcp__mcp-router__get_file_contents",
       "Bash(rm:*)",
       "Bash(git worktree:*)",
-      "Bash(bun add:*)"
+      "Bash(bun add:*)",
+      "Bash(bun pm ls:*)",
+      "Bash(bun x elizaos view:*)"
     ],
     "deny": []
   }

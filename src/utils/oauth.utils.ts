@@ -26,8 +26,18 @@ export class TwitterOAuthUtils {
   /**
    * Generate Twitter API callback URL
    */
-  static generateCallbackUrl(baseUrl: string): string {
-    return `${baseUrl}/api/auth/twitter/callback`;
+  static generateCallbackUrl(baseUrl: string, agentId?: string, state?: string): string {
+    const baseCallbackUrl = `${baseUrl}/api/auth/twitter/callback`;
+    
+    if (agentId && state) {
+      const params = new URLSearchParams({
+        agentId,
+        state
+      });
+      return `${baseCallbackUrl}?${params.toString()}`;
+    }
+    
+    return baseCallbackUrl;
   }
 
   /**

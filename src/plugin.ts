@@ -1,6 +1,6 @@
 import type { Plugin, IAgentRuntime } from "@elizaos/core";
 import { logger } from "@elizaos/core";
-import { twitterAuthSchema } from "./schema";
+import * as schema from "./schema";
 import { twitterAuthRoutes } from "./routes/twitter-auth";
 import { connectionsRoutes } from "./routes/connections";
 import { AuthService } from "./services/auth.service";
@@ -21,14 +21,13 @@ const assetsPath = path.resolve(frontendDist, "assets");
 console.log("*** frontPagePath", frontPagePath);
 console.log("*** assetsPath", assetsPath);
 
-
 const plugin: Plugin = {
   name: "twitter-auth",
   description: "Twitter authentication and connection management plugin",
   dependencies: ["@elizaos/plugin-sql"],
-  // Set lower priority to ensure SQL plugin initializes first
-  priority: 150,
-  schema: twitterAuthSchema,
+  // Set higher priority number to ensure SQL plugin initializes first
+  priority: 200,
+  schema,
   config: {
     AUTH_ENCRYPTION_KEY: process.env.AUTH_ENCRYPTION_KEY,
     TWITTER_API_KEY: process.env.TWITTER_API_KEY,
@@ -36,7 +35,10 @@ const plugin: Plugin = {
   },
   async init(config: Record<string, string>, runtime: IAgentRuntime) {
     logger.info("*** Initializing Twitter Auth plugin ***");
-    logger.info("Schema being passed to migrations:", Object.keys(twitterAuthSchema));
+    logger.info(
+      "Schema being passed to migrations:",
+      Object.keys(schema),
+    );
     try {
       // Validate encryption key
       const encryptionKey =
@@ -80,20 +82,20 @@ const plugin: Plugin = {
         const goalsHtmlPath = path.resolve(frontendDist, "index.html");
         if (fs.existsSync(goalsHtmlPath)) {
           let htmlContent = fs.readFileSync(goalsHtmlPath, "utf-8");
-          
+
           // Inject the actual agent ID from the runtime
           const agentId = runtime.agentId;
           const config = {
             agentId: agentId,
-            apiBase: `http://localhost:3000` // This could be configurable
+            apiBase: `http://localhost:3000`, // This could be configurable
           };
-          
+
           // Replace the test config with the actual config
           htmlContent = htmlContent.replace(
             /window\.ELIZA_CONFIG = \{[^}]+\};/,
-            `window.ELIZA_CONFIG = ${JSON.stringify(config)};`
+            `window.ELIZA_CONFIG = ${JSON.stringify(config)};`,
           );
-          
+
           res.setHeader("Content-Type", "text/html");
           res.send(htmlContent);
         } else {
@@ -128,7 +130,7 @@ const plugin: Plugin = {
       },
     },
     // Real Twitter Auth API routes
-    ...twitterAuthRoutes.map(route => ({
+    ...twitterAuthRoutes.map((route) => ({
       ...route,
       handler: async (req: any, res: any, runtime: IAgentRuntime) => {
         req.runtime = runtime;
@@ -137,7 +139,7 @@ const plugin: Plugin = {
     })),
 
     // Connection management routes
-    ...connectionsRoutes.map(route => ({
+    ...connectionsRoutes.map((route) => ({
       ...route,
       handler: async (req: any, res: any, runtime: IAgentRuntime) => {
         req.runtime = runtime;

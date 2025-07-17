@@ -80,7 +80,7 @@
   .text-balance {
     text-wrap: balance;
   }
-  
+
   /* Background utilities */
   .bg-card {
     background-color: hsl(var(--card));
@@ -97,7 +97,7 @@
   .bg-accent {
     background-color: hsl(var(--accent));
   }
-  
+
   /* Text utilities */
   .text-muted-foreground {
     color: hsl(var(--muted-foreground));
@@ -105,7 +105,7 @@
   .text-accent-foreground {
     color: hsl(var(--accent-foreground));
   }
-  
+
   /* Hover utilities */
   .hover\:bg-accent:hover {
     background-color: hsl(var(--accent));
