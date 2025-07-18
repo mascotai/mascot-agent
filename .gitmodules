@@ -1,0 +1,3 @@
+[submodule "plugins/plugin-twitter-fork"]
+	path = plugins/plugin-twitter-fork
+	url = https://github.com/yohaiai/plugin-twitter-fork.git

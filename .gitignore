@@ -116,3 +116,6 @@ plugin-mascot
 src/frontend/.eliza/
 
 .eliza/.elizadb
+
+# Worktrees folder - contains external git repositories
+worktrees/
