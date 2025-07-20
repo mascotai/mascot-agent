@@ -56,25 +56,39 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
   // Disconnect mutation
   const disconnectMutation = useMutation({
     mutationFn: async (service: string) => {
+      console.log('Starting disconnect mutation for service:', service);
+      console.log('Agent ID:', agentId);
+      
       const response = await fetch(
-        `/api/connections/${service}/disconnect?agentId=${agentId}`,
+        `/api/connections/${service}/disconnect`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ agentId }),
         },
       );
 
+      console.log('Disconnect response status:', response.status);
+      console.log('Disconnect response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error(`Failed to disconnect from ${service}`);
+        const errorText = await response.text();
+        console.error('Disconnect failed with response:', errorText);
+        throw new Error(`Failed to disconnect from ${service}: ${errorText}`);
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log('Disconnect successful:', result);
+      return result;
     },
     onSuccess: () => {
+      console.log('Disconnect mutation successful, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ["connections", agentId] });
+    },
+    onError: (error) => {
+      console.error('Disconnect mutation failed:', error);
     },
   });
 
@@ -108,7 +122,7 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
 
     try {
       const response = await fetch(
-        `/api/auth/${service}/connect?agentId=${agentId}`,
+        `/api/connections/${service}/connect`,
         {
           method: "POST",
           headers: {
@@ -193,9 +207,9 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
   };
 
   const handleDisconnect = async (service: string) => {
-    if (confirm(`Are you sure you want to disconnect from ${service}?`)) {
-      disconnectMutation.mutate(service);
-    }
+    console.log('Disconnect button clicked for service:', service);
+    console.log('Proceeding with disconnect (confirmation dialog removed)...');
+    disconnectMutation.mutate(service);
   };
 
   const handleTest = async (service: string) => {

@@ -1,8 +1,7 @@
 import type { Plugin, IAgentRuntime } from "@elizaos/core";
 import { logger } from "@elizaos/core";
 import { schema } from "./schema";
-import { twitterAuthRoutes } from "./routes/twitter-auth";
-import { connectionsRoutes } from "./routes/connections";
+import { routes } from "./routes";
 import { AuthService } from "./services/auth.service";
 import { DatabaseService } from "./services/database.service";
 import fs from "node:fs";
@@ -252,17 +251,8 @@ const plugin: Plugin = {
         }
       },
     },
-    // Real Twitter Auth API routes
-    ...twitterAuthRoutes.map((route) => ({
-      ...route,
-      handler: async (req: any, res: any, runtime: IAgentRuntime) => {
-        req.runtime = runtime;
-        return route.handler(req, res);
-      },
-    })),
-
-    // Connection management routes
-    ...connectionsRoutes.map((route) => ({
+    // All connection and authentication routes
+    ...routes.map((route) => ({
       ...route,
       handler: async (req: any, res: any, runtime: IAgentRuntime) => {
         req.runtime = runtime;

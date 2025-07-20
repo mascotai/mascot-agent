@@ -112,9 +112,9 @@ memory.db
 # Test outputs
 test-results/
 playwright-report/
-src/frontend/.eliza/
 
-.eliza/.elizadb
+
+.eliza
 
 # Worktrees folder - contains external git repositories
 worktrees/

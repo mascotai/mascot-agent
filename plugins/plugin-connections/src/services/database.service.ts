@@ -221,7 +221,7 @@ export class DatabaseService extends Service {
       await this.validateConnection();
 
       // Use upsert to handle race conditions
-      await this.db
+      const insertResult = await this.db
         .insert(serviceCredentialsTable)
         .values({
           agentId,
@@ -234,11 +234,30 @@ export class DatabaseService extends Service {
           target: [serviceCredentialsTable.agentId, serviceCredentialsTable.serviceName],
           set: {
             credentials: credentials,
+            isActive: true,  // Make sure isActive is set to true on update
             updatedAt: new Date(),
           },
         });
 
-      logger.info(`✅ Credentials stored successfully for ${service}`);
+      logger.info(`✅ Credentials stored successfully for ${service}`, { insertResult });
+      
+      // Verify the credentials were actually stored
+      const verification = await this.db
+        .select()
+        .from(serviceCredentialsTable)
+        .where(
+          and(
+            eq(serviceCredentialsTable.agentId, agentId),
+            eq(serviceCredentialsTable.serviceName, service),
+          ),
+        )
+        .limit(1);
+      
+      logger.info(`🔍 Verification check for ${service}:`, { 
+        found: verification.length > 0, 
+        isActive: verification[0]?.isActive,
+        hasCredentials: !!verification[0]?.credentials 
+      });
     } catch (error) {
       logger.error(`❌ Failed to store credentials for ${service}:`, error);
       throw error;
@@ -255,6 +274,7 @@ export class DatabaseService extends Service {
     try {
       await this.validateConnection();
 
+      logger.info(`🔍 Querying credentials for agent ${agentId} and service ${service}`);
       const result = await this.db
         .select()
         .from(serviceCredentialsTable)
@@ -266,6 +286,16 @@ export class DatabaseService extends Service {
           ),
         )
         .limit(1);
+
+      logger.info(`🔍 Query result for ${service}: found ${result.length} records`);
+      if (result.length > 0) {
+        logger.info(`🔍 Record details:`, {
+          agentId: result[0].agentId,
+          serviceName: result[0].serviceName, 
+          isActive: result[0].isActive,
+          hasCredentials: !!result[0].credentials
+        });
+      }
 
       if (result.length === 0) {
         logger.info(`No credentials found for agent ${agentId} and service ${service}`);
@@ -317,7 +347,7 @@ export class DatabaseService extends Service {
 
       return credentials.map((cred: any) => ({
         serviceName: cred.serviceName,
-        isConnected: true,
+        isConnected: cred.isActive === true,
         lastChecked: cred.updatedAt,
       }));
     } catch (error) {
@@ -331,8 +361,11 @@ export class DatabaseService extends Service {
    */
   async hasCredentials(agentId: UUID, service: ServiceName): Promise<boolean> {
     try {
+      logger.info(`🔍 Checking if credentials exist for agent ${agentId} and service ${service}`);
       const credentials = await this.getCredentials(agentId, service);
-      return credentials !== null;
+      const hasCredentials = credentials !== null;
+      logger.info(`🔍 hasCredentials result for ${service}: ${hasCredentials}`);
+      return hasCredentials;
     } catch (error) {
       logger.error(`❌ Failed to check credentials for ${service}:`, error);
       return false;

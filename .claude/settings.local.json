@@ -64,7 +64,9 @@
       "Bash(bun x:*)",
       "Bash(cat:*)",
       "Bash(elizaos:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(pg_isready:*)",
+      "Bash(psql:*)"
     ],
     "deny": []
   }
