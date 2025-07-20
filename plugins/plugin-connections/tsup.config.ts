@@ -4,7 +4,7 @@ export default defineConfig({
   entry: ["src/index.ts"],
   outDir: "dist",
   sourcemap: true,
-  clean: true,
+  clean: false,
   format: ["esm"],
   external: [
     "dotenv",

@@ -63,7 +63,8 @@
       "Bash(bun list:*)",
       "Bash(bun x:*)",
       "Bash(cat:*)",
-      "Bash(elizaos:*)"
+      "Bash(elizaos:*)",
+      "Bash(git pull:*)"
     ],
     "deny": []
   }

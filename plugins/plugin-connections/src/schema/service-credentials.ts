@@ -8,11 +8,15 @@ import {
   index,
   unique,
   pgEnum,
+  pgSchema,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
+// Create plugin_connections schema
+export const pluginConnectionsSchema = pgSchema("plugin_connections");
+
 // Enum for supported service types
-export const serviceTypeEnum = pgEnum("service_type", [
+export const serviceTypeEnum = pluginConnectionsSchema.enum("service_type", [
   "twitter",
   "discord",
   "telegram",
@@ -27,7 +31,7 @@ export const serviceTypeEnum = pgEnum("service_type", [
 ]);
 
 // Enum for credential status
-export const credentialStatusEnum = pgEnum("credential_status", [
+export const credentialStatusEnum = pluginConnectionsSchema.enum("credential_status", [
   "active",
   "inactive",
   "expired",
@@ -35,7 +39,7 @@ export const credentialStatusEnum = pgEnum("credential_status", [
   "pending",
 ]);
 
-export const serviceCredentialsTable = pgTable(
+export const serviceCredentialsTable = pluginConnectionsSchema.table(
   "service_credentials",
   {
     id: uuid("id")
