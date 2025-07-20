@@ -8,7 +8,7 @@ This is a Mascot AI Agent project built on ElizaOS, featuring a custom Twitter a
 
 ## Environment Variables
 
-### Authentication Service (plugin-mascot)
+### Authentication Service (plugin-connections)
 - `AUTH_ENCRYPTION_KEY` - 32+ character encryption key for secure credential storage
 - `TWITTER_API_KEY` - Twitter API consumer key (matches plugin-twitter)
 - `TWITTER_API_SECRET_KEY` - Twitter API consumer secret (matches plugin-twitter)
@@ -20,7 +20,7 @@ This is a Mascot AI Agent project built on ElizaOS, featuring a custom Twitter a
 - `TWITTER_ENABLE_REPLIES` - Enable reply interactions (default: true)
 - `TWITTER_ENABLE_ACTIONS` - Enable likes/retweets/quotes (default: false)
 
-Note: The plugin-mascot uses the same Twitter API credential names as plugin-twitter for consistency.
+Note: The plugin-connections uses the same Twitter API credential names as plugin-twitter for consistency.
 
 ## Development Commands
 

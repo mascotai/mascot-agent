@@ -1,0 +1,21 @@
+{
+  "folders": [
+    {
+      "name": "mascot-agent",
+      "path": "."
+    },
+    {
+      "name": "plugin-twitter-fork",
+      "path": "./plugins/plugin-twitter-fork"
+    }
+  ],
+  "settings": {
+    "git.detectSubmodules": true,
+    "git.repositoryScanMaxDepth": 3,
+    "git.scanRepositories": [
+      "./plugins",
+      "./worktrees"
+    ],
+    "git.autoRepositoryDetection": "subFolders"
+  }
+}

@@ -27,13 +27,20 @@
       "@elizaos/core/*": ["../../core/src/*"]
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "plugins/plugin-connections/**/*.ts"
+  ],
   "exclude": [
     "dist",
     "node_modules",
     "src/__tests__/**/*",
     "src/**/cypress/**/*",
+    "plugins/plugin-twitter-fork/**/*",
+    "plugins/plugin-connections/frontend/**/*",
+    "plugins/*/dist/**/*",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "**/*.tsx"
   ]
 }

@@ -35,7 +35,8 @@ export const character: Character = {
     ...(process.env.TWITTER_API_KEY?.trim() &&
     process.env.TWITTER_API_SECRET_KEY?.trim() &&
     process.env.TWITTER_ACCESS_TOKEN?.trim() &&
-    process.env.TWITTER_ACCESS_TOKEN_SECRET?.trim()
+    process.env.TWITTER_ACCESS_TOKEN_SECRET?.trim() &&
+    false
       ? ["@elizaos/plugin-twitter"]
       : []),
     ...(process.env.TELEGRAM_BOT_TOKEN?.trim()
