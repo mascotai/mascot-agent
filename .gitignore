@@ -112,7 +112,6 @@ memory.db
 # Test outputs
 test-results/
 playwright-report/
-plugins/plugin-connections
 src/frontend/.eliza/
 
 .eliza/.elizadb
