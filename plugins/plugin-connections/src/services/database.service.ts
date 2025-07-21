@@ -95,21 +95,10 @@ export class DatabaseService extends Service {
         `);
 
         await tx.execute(sql`
-          DO $$ BEGIN
-            CREATE TYPE plugin_connections.credential_status AS ENUM (
-              'active', 'inactive', 'expired', 'revoked', 'pending'
-            );
-          EXCEPTION
-            WHEN duplicate_object THEN null;
-          END $$;
-        `);
-
-        await tx.execute(sql`
           CREATE TABLE IF NOT EXISTS plugin_connections.service_credentials (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             agent_id UUID NOT NULL,
             service_name plugin_connections.service_type NOT NULL,
-            status plugin_connections.credential_status NOT NULL DEFAULT 'pending',
             credentials JSONB NOT NULL DEFAULT '{}',
             is_active BOOLEAN NOT NULL DEFAULT true,
             expires_at TIMESTAMPTZ,
@@ -232,6 +221,7 @@ export class DatabaseService extends Service {
       return credentials.map((cred: any) => ({
         serviceName: cred.serviceName,
         isConnected: cred.isActive === true,
+        isPending: false, // Default to false, auth service will determine actual state
         lastChecked: cred.updatedAt,
       }));
     } catch (error) {

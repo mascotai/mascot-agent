@@ -72,6 +72,7 @@ export interface OAuthCompleteRequest {
 export interface ConnectionStatus {
   serviceName: ServiceName;
   isConnected: boolean;
+  isPending: boolean;
   username?: string;
   userId?: string;
   expiresAt?: Date;

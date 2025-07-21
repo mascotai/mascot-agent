@@ -35,6 +35,7 @@ const plugin: Plugin = {
   schema,
 
   async init(config: Record<string, string>, runtime: IAgentRuntime) {
+    console.log("Connections Plugin: Initializing...");
     const credentials = await getCredentials(runtime, "twitter");
 
     if (credentials?.accessToken && credentials?.accessTokenSecret) {

@@ -9,6 +9,7 @@ interface Connection {
   service: string;
   serviceName: string;
   isConnected: boolean;
+  isPending: boolean; // Add this
   username?: string;
   userId?: string;
   displayName: string;
@@ -33,23 +34,8 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
-  const [pendingServices, setPendingServices] = useState<Set<string>>(new Set());
 
-  // Check URL parameters for OAuth completion
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const oauthStatus = urlParams.get('oauth');
-    const service = urlParams.get('service');
-    
-    if (oauthStatus === 'success' && service) {
-      // Mark this service as pending restart
-      setPendingServices(prev => new Set(prev).add(service));
-      
-      // Clean up URL
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
-  }, []);
+  
 
   // Fetch Twitter connection status only
   const {
@@ -73,12 +59,6 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
   // Disconnect mutation
   const disconnectMutation = useMutation({
     mutationFn: async (service: string) => {
-      // Remove from pending services when disconnecting
-      setPendingServices(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(service);
-        return newSet;
-      });
       console.log('Starting disconnect mutation for service:', service);
       console.log('Agent ID:', agentId);
       
@@ -183,8 +163,6 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
           if (authWindow?.closed) {
             clearInterval(checkClosed);
             setIsConnecting(false);
-            // Mark service as pending after OAuth
-            setPendingServices(prev => new Set(prev).add(service));
             // Refresh connection status after OAuth completes
             queryClient.invalidateQueries({
               queryKey: ["connections", agentId],
@@ -262,7 +240,7 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
           isConnecting={isConnecting}
           isDisconnecting={disconnectMutation.isPending}
           isTesting={testConnectionMutation.isPending}
-          isPending={pendingServices.has(connection.service)}
+          isPending={connection.isPending}
         />
       ))}
     </div>

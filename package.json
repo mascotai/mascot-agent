@@ -46,7 +46,7 @@
   },
   "scripts": {
     "start": "elizaos start",
-    "dev": "elizaos dev",
+    "dev": "bun run --filter=@mascotai/plugin-connections build && elizaos dev",
     "build": "tsc --noEmit && tsup",
     "lint": "prettier --write ./src",
     "type-check": "tsc --noEmit",

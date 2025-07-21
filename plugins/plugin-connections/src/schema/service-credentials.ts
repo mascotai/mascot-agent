@@ -30,15 +30,6 @@ export const serviceTypeEnum = pluginConnectionsSchema.enum("service_type", [
   "other",
 ]);
 
-// Enum for credential status
-export const credentialStatusEnum = pluginConnectionsSchema.enum("credential_status", [
-  "active",
-  "inactive",
-  "expired",
-  "revoked",
-  "pending",
-]);
-
 export const serviceCredentialsTable = pluginConnectionsSchema.table(
   "service_credentials",
   {
@@ -47,7 +38,6 @@ export const serviceCredentialsTable = pluginConnectionsSchema.table(
       .default(sql`gen_random_uuid()`),
     agentId: uuid("agent_id").notNull(),
     serviceName: serviceTypeEnum("service_name").notNull(),
-    status: credentialStatusEnum("status").notNull().default("pending"),
     credentials: jsonb("credentials").notNull().default("{}"),
     isActive: boolean("is_active").default(true).notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
@@ -62,7 +52,6 @@ export const serviceCredentialsTable = pluginConnectionsSchema.table(
     // Indexes for performance
     index("service_credentials_agent_id_idx").on(table.agentId),
     index("service_credentials_service_name_idx").on(table.serviceName),
-    index("service_credentials_status_idx").on(table.status),
     index("service_credentials_is_active_idx").on(table.isActive),
     index("service_credentials_created_at_idx").on(table.createdAt),
     // Unique constraint for one active credential per agent/service

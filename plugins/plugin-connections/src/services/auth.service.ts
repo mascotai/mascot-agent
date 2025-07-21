@@ -95,12 +95,63 @@ export class AuthService extends Service implements IAuthService {
     await this.databaseService.deleteCredentials(agentId, service);
   }
 
-  async getConnectionStatus(agentId: UUID, service: ServiceName): Promise<ConnectionStatus> {
- 
+  async getConnectionStatus(
+    agentId: UUID,
+    service: ServiceName,
+  ): Promise<ConnectionStatus> {
     const credentials = await this.getCredentials(agentId, service);
+
+    const settingsKeys: Partial<Record<ServiceName, string[]>> = {
+      twitter: ["TWITTER_ACCESS_TOKEN", "TWITTER_ACCESS_TOKEN_SECRET"],
+    };
+
+    // Get settings from runtime
+    const serviceSettingKeys = settingsKeys[service];
+    const settings = serviceSettingKeys?.reduce(
+      (acc: Record<string, any>, key: string) => {
+        acc[key] = this.runtime.getSetting(key);
+        return acc;
+      },
+      {},
+    );
+
+    const settingsToCredentialKeyMap: Partial<Record<ServiceName, Record<string, string>>> = {
+      twitter: {
+        TWITTER_ACCESS_TOKEN: "accessToken",
+        TWITTER_ACCESS_TOKEN_SECRET: "accessTokenSecret",
+      },
+    };
+
+    // Determine if the connection is pending
+    const isPending = (() => {
+      // If there are no credentials, it can't be pending. It's just disconnected.
+      if (!credentials) {
+        return false;
+      }
+
+      // If there are credentials, check if they differ from settings.
+      if (settings) {
+        const keyMap = settingsToCredentialKeyMap[service];
+        if (!keyMap) return false;
+
+        return Object.keys(settings).some((settingKey) => {
+          const credentialKey = keyMap[settingKey];
+          // Only compare if the setting is actually present in the runtime.
+          return (
+            settings[settingKey] &&
+            settings[settingKey] !== credentials[credentialKey]
+          );
+        });
+      }
+
+      // If no settings are defined for this service, it can't be pending.
+      return false;
+    })();
+
     return {
       serviceName: service,
       isConnected: !!credentials,
+      isPending,
       lastChecked: new Date(),
     };
   }
