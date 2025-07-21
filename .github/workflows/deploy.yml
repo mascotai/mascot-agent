@@ -17,17 +17,18 @@ jobs:
         run: echo "${{ secrets.ENV_PRODUCTION }}" > deployment/.env.production
 
       - name: Package application
-        run: tar -czvf mascot-agent.tar.gz --exclude=mascot-agent.tar.gz --exclude=*.git* --exclude=node_modules* .
-
+        run: |
+          mkdir -p /tmp/deploy
+          tar -czvf /tmp/deploy/mascot-agent.tar.gz --exclude=*.git* --exclude=node_modules* .
       - name: Deploy to VPS
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          source: /tmp/deploy/mascot-agent.tar.gz
+          target: ~/app/
           script: |
-            mkdir -p ~/app
-            scp mascot-agent.tar.gz ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:~/app/
             cd ~/app
             tar -xzvf mascot-agent.tar.gz
             cd deployment
