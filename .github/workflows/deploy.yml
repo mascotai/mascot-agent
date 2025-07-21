@@ -38,5 +38,6 @@ jobs:
           script: |
             cd ~/app
             tar -xzvf mascot-agent.tar.gz
+            cd mascot-agent
             cd deployment
             ./deploy.sh
