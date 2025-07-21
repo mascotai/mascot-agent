@@ -3,7 +3,7 @@ import type { UUID } from "@elizaos/core";
 /**
  * Supported external services
  */
-export type ServiceName = "twitter" | "discord" | "telegram";
+export type ServiceName = "twitter" | "discord" | "telegram" | "github" | "google" | "facebook" | "linkedin" | "instagram" | "tiktok" | "youtube" | "other";
 
 /**
  * Service credential storage structure
@@ -82,32 +82,22 @@ export interface ConnectionStatus {
  * Auth service interface
  */
 export interface IAuthService {
-  storeCredentials(
-    agentId: UUID,
-    service: ServiceName,
-    credentials: Record<string, any>,
-  ): Promise<void>;
+  
   getCredentials(
     agentId: UUID,
     service: ServiceName,
   ): Promise<Record<string, any> | null>;
   revokeCredentials(agentId: UUID, service: ServiceName): Promise<void>;
-  initiateOAuth(
+
+  storeCredentials(
     agentId: UUID,
     service: ServiceName,
-    returnUrl?: string,
-  ): Promise<string>;
-  completeOAuth(
-    agentId: UUID,
-    service: ServiceName,
-    code: string,
-    state: string,
+    credentials: Record<string, any>,
   ): Promise<void>;
   getConnectionStatus(
     agentId: UUID,
     service: ServiceName,
   ): Promise<ConnectionStatus>;
-  refreshCredentials(agentId: UUID, service: ServiceName): Promise<void>;
 }
 
 /**

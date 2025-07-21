@@ -12,42 +12,12 @@ export const character: Character = {
     // Core plugins first
     "@elizaos/plugin-sql",
 
-    // Custom plugin loaded via projectAgent.plugins, not here
 
-    // Text-only plugins (no embedding support)
-    ...(process.env.ANTHROPIC_API_KEY?.trim()
-      ? ["@elizaos/plugin-anthropic"]
-      : []),
-    ...(process.env.OPENROUTER_API_KEY?.trim()
-      ? ["@elizaos/plugin-openrouter"]
-      : []),
-
-    // Embedding-capable plugins (optional, based on available credentials)
+    // AI provider plugins (essential for operation)
     ...(process.env.OPENAI_API_KEY?.trim() ? ["@elizaos/plugin-openai"] : []),
-    ...(process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim()
-      ? ["@elizaos/plugin-google-genai"]
-      : []),
 
-    // Platform plugins
-    ...(process.env.DISCORD_API_TOKEN?.trim()
-      ? ["@elizaos/plugin-discord"]
-      : []),
-    ...(process.env.TWITTER_API_KEY?.trim() &&
-    process.env.TWITTER_API_SECRET_KEY?.trim() &&
-    process.env.TWITTER_ACCESS_TOKEN?.trim() &&
-    process.env.TWITTER_ACCESS_TOKEN_SECRET?.trim() &&
-    false
-      ? ["@elizaos/plugin-twitter"]
-      : []),
-    ...(process.env.TELEGRAM_BOT_TOKEN?.trim()
-      ? ["@elizaos/plugin-telegram"]
-      : []),
-
-    // Bootstrap plugin
+    // Bootstrap plugin (essential for content generation)
     ...(!process.env.IGNORE_BOOTSTRAP ? ["@elizaos/plugin-bootstrap"] : []),
-
-    // Ollama as universal fallback (always included for local AI capabilities)
-    "@elizaos/plugin-ollama",
   ],
   settings: {
     secrets: {},

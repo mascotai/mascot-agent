@@ -3,21 +3,22 @@ import { eq, and, sql } from "drizzle-orm";
 import { serviceCredentialsTable } from "../schema/service-credentials";
 import type {
   ServiceName,
-  ServiceCredential,
-  OAuthSession,
   ConnectionStatus,
-  TwitterCredentials,
 } from "../types/auth.types";
+import type { NodePgDatabase, NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
+import type { PgTransaction } from 'drizzle-orm/pg-core';
+import type { ExtractTablesWithRelations } from 'drizzle-orm';
 
 /**
- * Database service that handles all database operations for the connections plugin
- * This service creates tables and manages all database operations internally
+ * Manages database tables and operations for the connections plugin.
+ * Note: This service is currently not actively used as credentials are stored in agent settings.
  */
 export class DatabaseService extends Service {
   static serviceType = "database";
   private tablesCreated = false;
 
-  constructor(runtime?: IAgentRuntime) {
+  // The runtime is essential for database access.
+  constructor(protected runtime: IAgentRuntime) {
     super(runtime);
   }
 
@@ -26,178 +27,112 @@ export class DatabaseService extends Service {
   }
 
   /**
-   * Get database connection from runtime
+   * Direct access to the database via the runtime.
    */
-  private get db() {
-    if (!this.runtime?.db) {
-      throw new Error("Database not available - check that @elizaos/plugin-sql is loaded");
+  private get db(): NodePgDatabase<Record<string, unknown>> {
+    if (!this.runtime.db) {
+      throw new Error("Database not available. Ensure @elizaos/plugin-sql is loaded before this plugin.");
     }
     return this.runtime.db;
   }
 
   /**
-   * Static method to create and start the database service
+   * Creates and starts the database service.
    */
   static async start(runtime: IAgentRuntime): Promise<DatabaseService> {
-    logger.info("🗄️ Starting Database service...");
-    
+    logger.info("Starting DatabaseService for connections plugin...");
     const service = new DatabaseService(runtime);
     await service.initialize();
-    
-    logger.info("✅ Database service started successfully");
+    logger.info("DatabaseService for connections started successfully.");
     return service;
   }
 
   /**
-   * Static method to stop the database service
-   */
-  static async stop(runtime: IAgentRuntime): Promise<void> {
-    const service = runtime.getService(DatabaseService.serviceType);
-    if (service) {
-      await service.stop();
-    }
-  }
-
-  /**
-   * Stop the database service
+   * Instance-specific stop method.
+   * This service does not manage any persistent connections or intervals,
+   * so no specific cleanup is required here.
    */
   async stop(): Promise<void> {
-    logger.info("🗄️ Database service stopped");
+    // No operation needed.
   }
 
   /**
-   * Initialize the database service and create tables
+   * Initializes the database service and creates tables if they don't exist.
    */
   async initialize(): Promise<void> {
     try {
-      logger.info("🔄 Initializing database service...");
-      
-      // Ensure we have database access
-      if (!this.runtime?.db) {
-        throw new Error("Database not available - check that @elizaos/plugin-sql is loaded");
-      }
-
-      // Create tables if they don't exist
       await this.createTables();
-      
-      logger.info("✅ Database service initialized successfully");
     } catch (error) {
-      logger.error("❌ Failed to initialize database service:", error);
+      logger.error("Failed to initialize DatabaseService for connections:", error);
       throw error;
     }
   }
 
   /**
-   * Create all necessary tables for the connections plugin
-   * Creates tables in a dedicated plugin_connections schema for better organization
+   * Creates all necessary tables for the connections plugin.
    */
   private async createTables(): Promise<void> {
     if (this.tablesCreated) {
-      logger.info("📋 Tables already created, skipping");
       return;
     }
 
     try {
-      logger.info("🔧 Creating database tables...");
+      logger.info("Attempting to create database tables for connections plugin...");
 
-      // Test database connection first
-      await this.db.execute(sql`SELECT 1`);
-      logger.info("✅ Database connection verified");
+      // Use a transaction to ensure all schema changes are applied atomically.
+      await this.db.transaction(async (tx: PgTransaction<NodePgQueryResultHKT, Record<string, unknown>, ExtractTablesWithRelations<Record<string, unknown>>>) => {
+        await tx.execute(sql`CREATE SCHEMA IF NOT EXISTS plugin_connections`);
 
-      // Create plugin_connections schema if it doesn't exist
-      await this.db.execute(sql`CREATE SCHEMA IF NOT EXISTS plugin_connections`);
-      logger.info("🔧 Created plugin_connections schema");
+        await tx.execute(sql`
+          DO $$ BEGIN
+            CREATE TYPE plugin_connections.service_type AS ENUM (
+              'twitter', 'discord', 'telegram', 'github', 'google', 
+              'facebook', 'linkedin', 'instagram', 'tiktok', 'youtube', 'other'
+            );
+          EXCEPTION
+            WHEN duplicate_object THEN null;
+          END $$;
+        `);
 
-      // Set search_path to include plugin_connections schema
-      await this.db.execute(sql`SET search_path TO plugin_connections, public`);
-      logger.info("🔧 Set search_path to plugin_connections, public");
+        await tx.execute(sql`
+          DO $$ BEGIN
+            CREATE TYPE plugin_connections.credential_status AS ENUM (
+              'active', 'inactive', 'expired', 'revoked', 'pending'
+            );
+          EXCEPTION
+            WHEN duplicate_object THEN null;
+          END $$;
+        `);
 
-      // Create service_type enum in plugin_connections schema if it doesn't exist
-      logger.info("🔧 Creating service_type enum...");
-      await this.db.execute(sql`
-        DO $$ BEGIN
-          CREATE TYPE plugin_connections.service_type AS ENUM (
-            'twitter', 'discord', 'telegram', 'github', 'google', 
-            'facebook', 'linkedin', 'instagram', 'tiktok', 'youtube', 'other'
+        await tx.execute(sql`
+          CREATE TABLE IF NOT EXISTS plugin_connections.service_credentials (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            agent_id UUID NOT NULL,
+            service_name plugin_connections.service_type NOT NULL,
+            status plugin_connections.credential_status NOT NULL DEFAULT 'pending',
+            credentials JSONB NOT NULL DEFAULT '{}',
+            is_active BOOLEAN NOT NULL DEFAULT true,
+            expires_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            CONSTRAINT service_credentials_agent_service_unique UNIQUE (agent_id, service_name)
           );
-        EXCEPTION
-          WHEN duplicate_object THEN null;
-        END $$;
-      `);
+        `);
 
-      // Create credential_status enum in plugin_connections schema if it doesn't exist
-      logger.info("🔧 Creating credential_status enum...");
-      await this.db.execute(sql`
-        DO $$ BEGIN
-          CREATE TYPE plugin_connections.credential_status AS ENUM (
-            'active', 'inactive', 'expired', 'revoked', 'pending'
-          );
-        EXCEPTION
-          WHEN duplicate_object THEN null;
-        END $$;
-      `);
-
-      // Create the service credentials table in plugin_connections schema
-      logger.info("🔧 Creating service_credentials table...");
-      await this.db.execute(sql`
-        CREATE TABLE IF NOT EXISTS plugin_connections.service_credentials (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          agent_id UUID NOT NULL,
-          service_name plugin_connections.service_type NOT NULL,
-          status plugin_connections.credential_status NOT NULL DEFAULT 'pending',
-          credentials JSONB NOT NULL DEFAULT '{}',
-          is_active BOOLEAN NOT NULL DEFAULT true,
-          expires_at TIMESTAMPTZ,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-          
-          -- Unique constraint for one active credential per agent/service
-          CONSTRAINT service_credentials_agent_service_unique 
-            UNIQUE (agent_id, service_name)
-        );
-      `);
-
-      // Create indexes for performance
-      logger.info("🔧 Creating indexes...");
-      await this.db.execute(sql`
-        CREATE INDEX IF NOT EXISTS service_credentials_agent_id_idx 
-          ON plugin_connections.service_credentials (agent_id);
-      `);
-      await this.db.execute(sql`
-        CREATE INDEX IF NOT EXISTS service_credentials_service_name_idx 
-          ON plugin_connections.service_credentials (service_name);
-      `);
-      await this.db.execute(sql`
-        CREATE INDEX IF NOT EXISTS service_credentials_status_idx 
-          ON plugin_connections.service_credentials (status);
-      `);
-      await this.db.execute(sql`
-        CREATE INDEX IF NOT EXISTS service_credentials_is_active_idx 
-          ON plugin_connections.service_credentials (is_active);
-      `);
-      await this.db.execute(sql`
-        CREATE INDEX IF NOT EXISTS service_credentials_created_at_idx 
-          ON plugin_connections.service_credentials (created_at);
-      `);
-
-      // Test that the table is accessible
-      try {
-        await this.db.select().from(serviceCredentialsTable).limit(1);
-        logger.info("✅ service_credentials table is accessible");
-      } catch (error) {
-        logger.warn("⚠️ Table created but not accessible via Drizzle:", error);
-      }
+        await tx.execute(sql`CREATE INDEX IF NOT EXISTS service_credentials_agent_id_idx ON plugin_connections.service_credentials (agent_id)`);
+        await tx.execute(sql`CREATE INDEX IF NOT EXISTS service_credentials_service_name_idx ON plugin_connections.service_credentials (service_name)`);
+      });
 
       this.tablesCreated = true;
-      logger.info("✅ Database tables created in plugin_connections schema");
+      logger.info("Database tables for connections plugin created or already exist.");
     } catch (error) {
-      logger.error("❌ Failed to create database tables:", error);
+      logger.error("Failed to create database tables for connections plugin:", error);
       throw error;
     }
   }
 
   /**
-   * Validate database connection
+   * Validate database connection.
    */
   async validateConnection(): Promise<void> {
     try {
@@ -208,73 +143,41 @@ export class DatabaseService extends Service {
   }
 
   /**
-   * Store encrypted credentials for a service
+   * Store encrypted credentials for a service.
    */
   async storeCredentials(
     agentId: UUID,
     service: ServiceName,
     credentials: Record<string, any>,
   ): Promise<void> {
-    logger.info(`🔐 Storing credentials for agent ${agentId} and service ${service}`);
-
     try {
-      await this.validateConnection();
-
-      // Use upsert to handle race conditions
-      const insertResult = await this.db
-        .insert(serviceCredentialsTable)
-        .values({
-          agentId,
-          serviceName: service,
-          credentials: credentials,
-          isActive: true,
-          updatedAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: [serviceCredentialsTable.agentId, serviceCredentialsTable.serviceName],
-          set: {
-            credentials: credentials,
-            isActive: true,  // Make sure isActive is set to true on update
-            updatedAt: new Date(),
-          },
-        });
-
-      logger.info(`✅ Credentials stored successfully for ${service}`, { insertResult });
-      
-      // Verify the credentials were actually stored
-      const verification = await this.db
-        .select()
-        .from(serviceCredentialsTable)
-        .where(
-          and(
-            eq(serviceCredentialsTable.agentId, agentId),
-            eq(serviceCredentialsTable.serviceName, service),
-          ),
+      // Use raw SQL for upsert due to Drizzle typing issues
+      await this.db.execute(sql`
+        INSERT INTO plugin_connections.service_credentials (
+          agent_id, service_name, credentials, is_active, updated_at
+        ) VALUES (
+          ${agentId}, ${service}, ${JSON.stringify(credentials)}, true, now()
         )
-        .limit(1);
-      
-      logger.info(`🔍 Verification check for ${service}:`, { 
-        found: verification.length > 0, 
-        isActive: verification[0]?.isActive,
-        hasCredentials: !!verification[0]?.credentials 
-      });
+        ON CONFLICT (agent_id, service_name) 
+        DO UPDATE SET 
+          credentials = ${JSON.stringify(credentials)},
+          is_active = true,
+          updated_at = now()
+      `);
     } catch (error) {
-      logger.error(`❌ Failed to store credentials for ${service}:`, error);
+      logger.error(`Failed to store credentials for service '${service}':`, error);
       throw error;
     }
   }
 
   /**
-   * Get encrypted credentials for a service
+   * Get encrypted credentials for a service.
    */
   async getCredentials(
     agentId: UUID,
     service: ServiceName,
   ): Promise<Record<string, any> | null> {
     try {
-      await this.validateConnection();
-
-      logger.info(`🔍 Querying credentials for agent ${agentId} and service ${service}`);
       const result = await this.db
         .select()
         .from(serviceCredentialsTable)
@@ -287,36 +190,21 @@ export class DatabaseService extends Service {
         )
         .limit(1);
 
-      logger.info(`🔍 Query result for ${service}: found ${result.length} records`);
-      if (result.length > 0) {
-        logger.info(`🔍 Record details:`, {
-          agentId: result[0].agentId,
-          serviceName: result[0].serviceName, 
-          isActive: result[0].isActive,
-          hasCredentials: !!result[0].credentials
-        });
-      }
-
       if (result.length === 0) {
-        logger.info(`No credentials found for agent ${agentId} and service ${service}`);
         return null;
       }
-
-      const credentialData = result[0];
-      return credentialData.credentials as Record<string, any>;
+      return result[0].credentials as Record<string, any>;
     } catch (error) {
-      logger.error(`❌ Failed to get credentials for ${service}:`, error);
+      logger.error(`Failed to get credentials for service '${service}':`, error);
       throw error;
     }
   }
 
   /**
-   * Delete credentials for a service
+   * Delete credentials for a service.
    */
   async deleteCredentials(agentId: UUID, service: ServiceName): Promise<void> {
     try {
-      await this.validateConnection();
-
       await this.db
         .delete(serviceCredentialsTable)
         .where(
@@ -325,21 +213,17 @@ export class DatabaseService extends Service {
             eq(serviceCredentialsTable.serviceName, service),
           ),
         );
-
-      logger.info(`✅ Credentials deleted for agent ${agentId} and service ${service}`);
     } catch (error) {
-      logger.error(`❌ Failed to delete credentials for ${service}:`, error);
+      logger.error(`Failed to delete credentials for service '${service}':`, error);
       throw error;
     }
   }
 
   /**
-   * Get connection status for all services for an agent
+   * Get connection status for all services for an agent.
    */
   async getConnectionStatus(agentId: UUID): Promise<ConnectionStatus[]> {
     try {
-      await this.validateConnection();
-
       const credentials = await this.db
         .select()
         .from(serviceCredentialsTable)
@@ -351,23 +235,20 @@ export class DatabaseService extends Service {
         lastChecked: cred.updatedAt,
       }));
     } catch (error) {
-      logger.error("❌ Failed to get connection status:", error);
+      logger.error("Failed to get connection status:", error);
       throw error;
     }
   }
 
   /**
-   * Check if service has credentials
+   * Check if service has credentials.
    */
   async hasCredentials(agentId: UUID, service: ServiceName): Promise<boolean> {
     try {
-      logger.info(`🔍 Checking if credentials exist for agent ${agentId} and service ${service}`);
       const credentials = await this.getCredentials(agentId, service);
-      const hasCredentials = credentials !== null;
-      logger.info(`🔍 hasCredentials result for ${service}: ${hasCredentials}`);
-      return hasCredentials;
+      return credentials !== null;
     } catch (error) {
-      logger.error(`❌ Failed to check credentials for ${service}:`, error);
+      logger.error(`Failed to check credentials for service '${service}':`, error);
       return false;
     }
   }

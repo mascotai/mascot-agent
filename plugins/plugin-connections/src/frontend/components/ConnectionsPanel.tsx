@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UUID } from "@elizaos/core";
 import { Button } from "./ui/button";
@@ -33,6 +33,23 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  const [pendingServices, setPendingServices] = useState<Set<string>>(new Set());
+
+  // Check URL parameters for OAuth completion
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthStatus = urlParams.get('oauth');
+    const service = urlParams.get('service');
+    
+    if (oauthStatus === 'success' && service) {
+      // Mark this service as pending restart
+      setPendingServices(prev => new Set(prev).add(service));
+      
+      // Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
 
   // Fetch Twitter connection status only
   const {
@@ -56,6 +73,12 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
   // Disconnect mutation
   const disconnectMutation = useMutation({
     mutationFn: async (service: string) => {
+      // Remove from pending services when disconnecting
+      setPendingServices(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(service);
+        return newSet;
+      });
       console.log('Starting disconnect mutation for service:', service);
       console.log('Agent ID:', agentId);
       
@@ -160,6 +183,8 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
           if (authWindow?.closed) {
             clearInterval(checkClosed);
             setIsConnecting(false);
+            // Mark service as pending after OAuth
+            setPendingServices(prev => new Set(prev).add(service));
             // Refresh connection status after OAuth completes
             queryClient.invalidateQueries({
               queryKey: ["connections", agentId],
@@ -237,6 +262,7 @@ export const ConnectionsPanel: React.FC<ConnectionsPanelProps> = ({
           isConnecting={isConnecting}
           isDisconnecting={disconnectMutation.isPending}
           isTesting={testConnectionMutation.isPending}
+          isPending={pendingServices.has(connection.service)}
         />
       ))}
     </div>
@@ -251,6 +277,7 @@ interface ConnectionCardProps {
   isConnecting: boolean;
   isDisconnecting: boolean;
   isTesting: boolean;
+  isPending: boolean;
 }
 
 const ConnectionCard: React.FC<ConnectionCardProps> = ({
@@ -261,8 +288,16 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
   isConnecting,
   isDisconnecting,
   isTesting,
+  isPending,
 }) => {
-  const getStatusBadge = (isConnected: boolean) => {
+  const getStatusBadge = (isConnected: boolean, isPending: boolean) => {
+    if (isPending) {
+      return (
+        <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+          Pending Restart
+        </span>
+      );
+    }
     return isConnected ? (
       <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
         Connected
@@ -297,13 +332,13 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
               <span className="font-medium text-sm">
                 {connection.displayName}
               </span>
-              {getStatusBadge(connection.isConnected)}
+              {getStatusBadge(connection.isConnected, isPending)}
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {connection.isConnected ? (
+          {connection.isConnected || isPending ? (
             <Button
               onClick={onDisconnect}
               disabled={isDisconnecting}

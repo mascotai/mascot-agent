@@ -1,7 +1,6 @@
 import { logger, type UUID } from "@elizaos/core";
 import type { AuthService } from "./services/auth.service.js";
 import type { ServiceName, TwitterCredentials } from "./types/auth.types.js";
-import { generateOAuthState, TwitterOAuthUtils } from "./utils/oauth.utils.js";
 import { TwitterApi } from "twitter-api-v2";
 
 /**
@@ -174,7 +173,8 @@ export const routes = [
         }
 
         // Generate state for security
-        const state = generateOAuthState();
+        // Generate state for security
+        const state = authService.generateOAuthState();
 
         // Store OAuth session
         await authService.createOAuthSession(
@@ -278,19 +278,19 @@ export const routes = [
           username: user.data.username,
         };
 
-        // Store credentials
-        logger.info(`🔐 Storing Twitter credentials for agent ${agentId} (user: @${user.data.username})`);
+        
+
+        // Store the credentials in the database
         await authService.storeCredentials(agentId, "twitter", credentials);
-        logger.info(`✅ Twitter credentials stored successfully for agent ${agentId}`);
 
         // Clean up temporary credentials
         authService.deleteTempCredentials(oauth_token);
 
-        // Redirect to main dashboard
-        const protocol = req.protocol || 'http';
-        const host = req.get('host') || 'localhost:3000';
-        const dashboardUrl = `${protocol}://${host}/chat/${agentId}`;
-        res.redirect(dashboardUrl);
+        // Redirect to the original returnUrl with success indicator
+        const redirectUrl = new URL(`${req.protocol}://${req.get('host')}/chat/${agentId}`);
+        redirectUrl.searchParams.set("oauth", "success");
+        redirectUrl.searchParams.set("service", "twitter");
+        res.redirect(redirectUrl.toString());
       } catch (error) {
         logger.error("Twitter OAuth callback failed:", error);
         res.status(500).json({
@@ -327,6 +327,23 @@ export const routes = [
 
         // Revoke credentials
         await authService.revokeCredentials(agentId, "twitter");
+
+        // Also remove from agent settings
+        await req.runtime.updateAgent(agentId, {
+          settings: {
+            secrets: {
+              TWITTER_ACCESS_TOKEN: null,
+              TWITTER_ACCESS_TOKEN_SECRET: null,
+            },
+          },
+        });
+        
+        // Stop the Twitter service if it's running
+        const twitterService = req.runtime.getService("twitter");
+        if (twitterService && typeof twitterService.stop === 'function') {
+          logger.warn("⚠️  Stopping Twitter service after disconnect");
+          await twitterService.stop();
+        }
 
         res.json({
           success: true,
