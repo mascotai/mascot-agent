@@ -1,0 +1,10 @@
+services:
+  agent-green:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8443"
+    environment:
+      - NODE_ENV=production
+      # Add other environment variables here
