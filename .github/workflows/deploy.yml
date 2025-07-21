@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           source: "/tmp/deploy/mascot-agent.tar.gz"
-          target: "~/app/"
+          target: "~/app/mascot-agent.tar.gz"
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@master
