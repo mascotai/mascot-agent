@@ -20,6 +20,9 @@ jobs:
         run: |
           mkdir -p /tmp/deploy
           tar -czvf /tmp/deploy/mascot-agent.tar.gz --exclude=*.git* --exclude=node_modules* .
+      - name: Add VPS to known hosts
+        run: ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
       - name: Deploy to VPS
         uses: appleboy/ssh-action@master
         with:
