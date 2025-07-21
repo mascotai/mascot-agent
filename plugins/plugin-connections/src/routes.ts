@@ -3,6 +3,8 @@ import type { AuthService } from "./services/auth.service.js";
 import type { ServiceName, TwitterCredentials } from "./types/auth.types.js";
 import { TwitterApi } from "twitter-api-v2";
 
+import { updateAndRegisterPlugin } from "./utils/plugin-loader.js";
+
 /**
  * Consolidated routes for connection management and Twitter authentication
  */
@@ -282,6 +284,16 @@ export const routes = [
 
         // Store the credentials in the database
         await authService.storeCredentials(agentId, "twitter", credentials);
+
+        // Dynamically load the twitter plugin
+        await updateAndRegisterPlugin(
+          req.runtime,
+          {
+            TWITTER_ACCESS_TOKEN: credentials.accessToken,
+            TWITTER_ACCESS_TOKEN_SECRET: credentials.accessTokenSecret,
+          },
+          "@elizaos/plugin-twitter",
+        );
 
         // Clean up temporary credentials
         authService.deleteTempCredentials(oauth_token);

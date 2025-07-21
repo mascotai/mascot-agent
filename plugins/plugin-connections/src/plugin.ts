@@ -25,7 +25,7 @@ console.log("*** assetsPath", assetsPath);
 
 
 
-import { getCredentials } from "./utils/credentials";
+import { updateAndRegisterPlugin, getCredentials } from "./utils";
 
 const plugin: Plugin = {
   name: "connections",
@@ -37,21 +37,15 @@ const plugin: Plugin = {
   async init(config: Record<string, string>, runtime: IAgentRuntime) {
     console.log("Connections Plugin: Initializing...");
     const credentials = await getCredentials(runtime, "twitter");
-
-    if (credentials?.accessToken && credentials?.accessTokenSecret) {
-      console.log("Connections Plugin: Found Twitter credentials in database.");
-      try {
-        // Inject the credentials into the runtime for the Twitter plugin to use.
-        runtime.setSetting("TWITTER_ACCESS_TOKEN", credentials.accessToken);
-        runtime.setSetting("TWITTER_ACCESS_TOKEN_SECRET", credentials.accessTokenSecret);
-
-        const { default: twitterPlugin } = await import("@elizaos/plugin-twitter");
-        await runtime.registerPlugin(twitterPlugin as any);
-      } catch (error) {
-        logger.error("Connections Plugin: Failed to dynamically load Twitter plugin", error);
-      }
-    } else {
-      console.log("Connections Plugin: No valid Twitter credentials found in database.");
+    if (credentials) {
+      await updateAndRegisterPlugin(
+        runtime,
+        {
+          TWITTER_ACCESS_TOKEN: credentials.accessToken,
+          TWITTER_ACCESS_TOKEN_SECRET: credentials.accessTokenSecret,
+        },
+        "@elizaos/plugin-twitter",
+      );
     }
   },
   routes: [
