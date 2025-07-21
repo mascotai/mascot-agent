@@ -17,7 +17,7 @@ jobs:
         run: echo "${{ secrets.ENV_PRODUCTION }}" > deployment/.env.production
 
       - name: Package application
-        run: tar -czvf mascot-agent.tar.gz --exclude=*.git* --exclude=node_modules* .
+        run: tar -czvf mascot-agent.tar.gz --exclude=mascot-agent.tar.gz --exclude=*.git* --exclude=node_modules* .
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@master
