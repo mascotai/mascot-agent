@@ -1,17 +1,68 @@
-FROM node:18-alpine
+FROM node:23.3.0-slim AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN bun install --production
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    ffmpeg \
+    g++ \
+    git \
+    make \
+    python3 \
+    unzip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g bun@1.2.5 turbo@2.3.3 @elizaos/cli@latest
+
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+COPY package.json bun.lock* bunfig.toml* turbo.json* tsconfig.json* ./
+COPY plugins/plugin-connections/package.json ./plugins/plugin-connections/
+COPY scripts ./scripts
+
+RUN SKIP_POSTINSTALL=1 bun install --no-cache
 
 COPY . .
 
-# The healthcheck endpoint needs to be implemented in the agent first
-# HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-#   CMD node healthcheck.js
+RUN bun run build
 
-EXPOSE 8443
+FROM node:23.3.0-slim
 
-CMD ["bun", "start"]
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    ffmpeg \
+    git \
+    python3 \
+    unzip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g bun@1.2.5 turbo@2.3.3 @elizaos/cli@latest
+
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/turbo.json ./
+COPY --from=builder /app/tsconfig.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/characters ./characters
+COPY --from=builder /app/src ./src
+
+ENV NODE_ENV=production
+
+# Health check using standard ElizaOS pattern
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+EXPOSE 3000
+EXPOSE 50000-50100/udp
+
+# Use ElizaOS CLI for production start with production character and explicit port
+CMD ["elizaos", "start", "--character", "characters/production.json", "--port", "3000"]
 

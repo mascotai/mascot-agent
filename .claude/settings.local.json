@@ -67,7 +67,9 @@
       "Bash(git pull:*)",
       "Bash(pg_isready:*)",
       "Bash(psql:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "mcp__mcp-router__fetch_generic_documentation",
+      "Bash(chmod:*)"
     ],
     "deny": []
   }
