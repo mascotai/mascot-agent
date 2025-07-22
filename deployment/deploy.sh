@@ -15,9 +15,7 @@ echo "Deploying to production"
 echo "Active environment: $ACTIVE_ENV"
 echo "Inactive environment: $INACTIVE_ENV"
 
-# Pull the latest code
-git checkout main
-git pull
+
 
 # Build the new Docker image
 docker-compose -f docker-compose.production.yml build
