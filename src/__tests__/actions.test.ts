@@ -1,5 +1,6 @@
 import { describe, expect, it, spyOn, beforeAll, afterAll } from "bun:test";
-import plugin from "../plugin";
+import { mascotAgent } from "../index";
+import { character } from "../character";
 import { logger } from "@elizaos/core";
 import type {
   Action,
@@ -33,139 +34,99 @@ afterAll(() => {
 });
 
 describe("Actions", () => {
-  // Find the HELLO_WORLD action from the plugin
-  const helloWorldAction = plugin.actions?.find(
-    (action) => action.name === "HELLO_WORLD",
-  );
-
-  // Run core tests on all plugin actions
-  it("should pass core action tests", () => {
-    if (plugin.actions) {
-      const coreTestResults = runCoreActionTests(plugin.actions);
-      expect(coreTestResults).toBeDefined();
-      expect(coreTestResults.formattedNames).toBeDefined();
-      expect(coreTestResults.formattedActions).toBeDefined();
-      expect(coreTestResults.composedExamples).toBeDefined();
-
-      // Document the core test results
-      documentTestResult("Core Action Tests", coreTestResults);
-    }
+  // Test the character and project structure
+  it("should have valid character definition", () => {
+    expect(character).toBeDefined();
+    expect(character.name).toBe("MascotAgent");
+    expect(character.plugins).toBeDefined();
+    expect(Array.isArray(character.plugins)).toBe(true);
+    expect(character.plugins.length).toBeGreaterThan(0);
+    
+    documentTestResult("Character validation", {
+      name: character.name,
+      pluginCount: character.plugins.length,
+      plugins: character.plugins
+    });
   });
 
-  describe("HELLO_WORLD Action", () => {
-    it("should exist in the plugin", () => {
-      expect(helloWorldAction).toBeDefined();
+  it("should have valid mascot agent structure", () => {
+    expect(mascotAgent).toBeDefined();
+    expect(mascotAgent.character).toBeDefined();
+    expect(mascotAgent.character.name).toBe("MascotAgent");
+    
+    documentTestResult("MascotAgent validation", {
+      hasCharacter: !!mascotAgent.character,
+      characterName: mascotAgent.character.name
+    });
+  });
+
+  describe("Character Message Examples", () => {
+    it("should have message examples defined", () => {
+      expect(character.messageExamples).toBeDefined();
+      expect(Array.isArray(character.messageExamples)).toBe(true);
+      expect(character.messageExamples.length).toBeGreaterThan(0);
+      
+      documentTestResult("Message examples", {
+        count: character.messageExamples.length,
+        hasExamples: character.messageExamples.length > 0
+      });
     });
 
-    it("should have the correct structure", () => {
-      if (helloWorldAction) {
-        expect(helloWorldAction).toHaveProperty("name", "HELLO_WORLD");
-        expect(helloWorldAction).toHaveProperty("description");
-        expect(helloWorldAction).toHaveProperty("similes");
-        expect(helloWorldAction).toHaveProperty("validate");
-        expect(helloWorldAction).toHaveProperty("handler");
-        expect(helloWorldAction).toHaveProperty("examples");
-        expect(Array.isArray(helloWorldAction.similes)).toBe(true);
-        expect(Array.isArray(helloWorldAction.examples)).toBe(true);
-      }
-    });
-
-    it("should have GREET and SAY_HELLO as similes", () => {
-      if (helloWorldAction) {
-        expect(helloWorldAction.similes).toContain("GREET");
-        expect(helloWorldAction.similes).toContain("SAY_HELLO");
-      }
-    });
-
-    it("should have at least one example", () => {
-      if (helloWorldAction && helloWorldAction.examples) {
-        expect(helloWorldAction.examples.length).toBeGreaterThan(0);
-
-        // Check first example structure
-        const firstExample = helloWorldAction.examples[0];
-        expect(firstExample.length).toBeGreaterThan(1); // At least two messages
-
-        // First message should be a request
+    it("should have properly structured message examples", () => {
+      if (character.messageExamples && character.messageExamples.length > 0) {
+        const firstExample = character.messageExamples[0];
+        expect(Array.isArray(firstExample)).toBe(true);
+        expect(firstExample.length).toBeGreaterThan(1);
+        
+        // Check first message structure
         expect(firstExample[0]).toHaveProperty("name");
         expect(firstExample[0]).toHaveProperty("content");
         expect(firstExample[0].content).toHaveProperty("text");
-        expect(firstExample[0].content.text).toContain("hello");
-
-        // Second message should be a response
-        expect(firstExample[1]).toHaveProperty("name");
+        
+        // Check response message structure
+        expect(firstExample[1]).toHaveProperty("name", "MascotAgent");
         expect(firstExample[1]).toHaveProperty("content");
         expect(firstExample[1].content).toHaveProperty("text");
-        expect(firstExample[1].content).toHaveProperty("actions");
-        expect(firstExample[1].content.text).toBe("hello world!");
-        expect(firstExample[1].content.actions).toContain("HELLO_WORLD");
+        
+        documentTestResult("Message example structure", {
+          messageCount: firstExample.length,
+          hasProperStructure: true
+        });
       }
     });
 
-    it("should return true from validate function", async () => {
-      if (helloWorldAction) {
-        const runtime = createMockRuntime();
-        const mockMessage = createMockMessage("Hello!");
-        const mockState = createMockState();
+    it("should validate mock runtime functionality", async () => {
+      const runtime = createMockRuntime();
+      const mockMessage = createMockMessage("Hello!");
+      const mockState = createMockState();
 
-        let result = false;
-        let error: Error | null = null;
-
-        try {
-          result = await helloWorldAction.validate(
-            runtime,
-            mockMessage,
-            mockState,
-          );
-          expect(result).toBe(true);
-        } catch (e) {
-          error = e as Error;
-          logger.error("Validate function error:", e);
-        }
-
-        documentTestResult("HELLO_WORLD action validate", result, error);
-      }
+      expect(runtime).toBeDefined();
+      expect(runtime.character).toBeDefined();
+      expect(runtime.character.name).toBe("MascotAgent");
+      expect(mockMessage).toBeDefined();
+      expect(mockMessage.content.text).toBe("Hello!");
+      expect(mockState).toBeDefined();
+      
+      documentTestResult("Mock runtime validation", {
+        runtimeValid: !!runtime,
+        characterName: runtime.character.name,
+        messageText: mockMessage.content.text
+      });
     });
 
-    it("should call back with hello world response from handler", async () => {
-      if (helloWorldAction) {
-        const runtime = createMockRuntime();
-        const mockMessage = createMockMessage("Hello!");
-        const mockState = createMockState();
-
-        let callbackResponse: any = {};
-        let error: Error | null = null;
-
-        const mockCallback = (response: any) => {
-          callbackResponse = response;
-        };
-
-        try {
-          await helloWorldAction.handler(
-            runtime,
-            mockMessage,
-            mockState,
-            {},
-            mockCallback as HandlerCallback,
-            [],
-          );
-
-          // Verify callback was called with the right content
-          expect(callbackResponse).toBeTruthy();
-          expect(callbackResponse).toHaveProperty("text");
-          expect(callbackResponse).toHaveProperty("actions");
-          expect(callbackResponse.actions).toContain("HELLO_WORLD");
-          expect(callbackResponse).toHaveProperty("source", "test");
-        } catch (e) {
-          error = e as Error;
-          logger.error("Handler function error:", e);
-        }
-
-        documentTestResult(
-          "HELLO_WORLD action handler",
-          callbackResponse,
-          error,
-        );
-      }
+    it("should have topics for content generation", () => {
+      expect(character.topics).toBeDefined();
+      expect(Array.isArray(character.topics)).toBe(true);
+      expect(character.topics.length).toBeGreaterThan(0);
+      
+      // Check for expected topics
+      expect(character.topics).toContain("community building and management");
+      expect(character.topics).toContain("social media engagement strategies");
+      
+      documentTestResult("Character topics", {
+        topicCount: character.topics.length,
+        sampleTopics: character.topics.slice(0, 3)
+      });
     });
   });
 });
