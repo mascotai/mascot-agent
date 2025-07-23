@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { character } from "../index";
+import { character } from "../character";
 
 describe("Character Configuration", () => {
   it("should have all required fields", () => {
@@ -11,7 +11,7 @@ describe("Character Configuration", () => {
   });
 
   it("should have the correct name", () => {
-    expect(character.name).toBe("Eliza");
+    expect(character.name).toBe("MascotAgent");
   });
 
   it("should have plugins defined as an array", () => {

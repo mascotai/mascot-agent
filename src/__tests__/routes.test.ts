@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
-import plugin from "../plugin";
+import plugin from "../../plugins/plugin-connections/src/plugin";
 
 describe("Plugin Routes", () => {
   it("should have routes defined", () => {
@@ -10,31 +10,34 @@ describe("Plugin Routes", () => {
     }
   });
 
-  it("should have a route for /helloworld", () => {
+  it("should have authentication routes", () => {
     if (plugin.routes) {
-      const helloWorldRoute = plugin.routes.find(
-        (route) => route.path === "/helloworld",
+      // Look for Twitter auth routes in our connections plugin
+      const authRoutes = plugin.routes.filter(
+        (route) => route.path.includes("/auth") || route.path.includes("/connections"),
       );
-      expect(helloWorldRoute).toBeDefined();
+      expect(authRoutes.length).toBeGreaterThan(0);
 
-      if (helloWorldRoute) {
-        expect(helloWorldRoute.type).toBe("GET");
-        expect(typeof helloWorldRoute.handler).toBe("function");
-      }
+      // Check that routes have proper structure
+      authRoutes.forEach(route => {
+        expect(route.path).toBeDefined();
+        expect(["GET", "POST", "PUT", "DELETE"]).toContain(route.type);
+        expect(typeof route.handler).toBe("function");
+      });
     }
   });
 
   it("should handle route requests correctly", async () => {
-    if (plugin.routes) {
-      const helloWorldRoute = plugin.routes.find(
-        (route) => route.path === "/helloworld",
-      );
+    if (plugin.routes && plugin.routes.length > 0) {
+      const firstRoute = plugin.routes[0];
 
-      if (helloWorldRoute && helloWorldRoute.handler) {
+      if (firstRoute && firstRoute.handler) {
         // Create mock request and response objects
         const mockReq = {};
         const mockRes = {
           json: mock(),
+          status: mock(() => mockRes),
+          send: mock(),
         };
 
         // Mock runtime object as third parameter

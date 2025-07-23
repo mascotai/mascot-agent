@@ -33,25 +33,25 @@ describe("Project Structure Validation", () => {
   describe("Source Files", () => {
     it("should contain the required source files", () => {
       expect(fileExists(path.join(rootDir, "src", "index.ts"))).toBe(true);
-      expect(fileExists(path.join(rootDir, "src", "plugin.ts"))).toBe(true);
+      expect(fileExists(path.join(rootDir, "src", "character.ts"))).toBe(true);
     });
 
     it("should have properly structured main files", () => {
-      // Check index.ts contains character definition
+      // Check index.ts contains mascotAgent and character imports
       const indexContent = fs.readFileSync(
         path.join(rootDir, "src", "index.ts"),
         "utf8",
       );
       expect(indexContent).toContain("character");
-      expect(indexContent).toContain("plugin");
+      expect(indexContent).toContain("mascotAgent");
 
-      // Check plugin.ts contains plugin definition
-      const pluginContent = fs.readFileSync(
-        path.join(rootDir, "src", "plugin.ts"),
+      // Check character.ts contains character definition
+      const characterContent = fs.readFileSync(
+        path.join(rootDir, "src", "character.ts"),
         "utf8",
       );
-      expect(pluginContent).toContain("export default");
-      expect(pluginContent).toContain("actions");
+      expect(characterContent).toContain("export const character");
+      expect(characterContent).toContain("MascotAgent");
     });
   });
 
