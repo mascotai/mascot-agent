@@ -1,4 +1,18 @@
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: mascot-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - mascot-agent
+    networks:
+      - mascot-network
+
   postgres:
     image: pgvector/pgvector:pg16
     container_name: mascot-postgres-local
@@ -25,14 +39,15 @@ services:
       dockerfile: Dockerfile
     container_name: mascot-agent
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    # Don't expose port 3000 externally - force all traffic through Nginx
+    # ports:
+    #   - "3000:3000"
     environment:
       - NODE_ENV=production
       - ELIZA_UI_ENABLE=true
       - POSTGRES_URL=postgresql://postgres:password@postgres:5432/mascot_dev
       # Enable debug logging
-      - DEBUG=*
+      # - DEBUG=*
     env_file:
       - .env
     volumes:

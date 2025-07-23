@@ -13,8 +13,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Resolve the path to the frontend distribution directory
-// Try multiple possible locations for the frontend files
-const frontendDist = path.resolve(process.cwd(), "plugins/plugin-connections/dist/frontend");
+// Use the plugin's built location to find the frontend files (same level as the built JS)
+const frontendDist = path.resolve(__dirname, "frontend");
 
 const frontPagePath = path.resolve(frontendDist, "index.html");
 const assetsPath = path.resolve(frontendDist, "assets");
@@ -75,7 +75,10 @@ const plugin: Plugin = {
             `window.ELIZA_CONFIG = ${JSON.stringify(config)};`,
           );
 
+          // Set headers to allow framing from ElizaOS dashboard
           res.setHeader("Content-Type", "text/html");
+          res.setHeader("X-Frame-Options", "SAMEORIGIN");
+          res.setHeader("Content-Security-Policy", "frame-ancestors 'self' http://localhost:* https://localhost:*");
           res.send(htmlContent);
         } else {
           res.status(404).send("Connections HTML file not found");
@@ -103,6 +106,9 @@ const plugin: Plugin = {
         }
 
         if (fs.existsSync(filePath)) {
+          // Set headers to allow assets to be loaded in frames
+          res.setHeader("X-Frame-Options", "SAMEORIGIN");
+          res.setHeader("Content-Security-Policy", "frame-ancestors 'self' http://localhost:* https://localhost:*");
           res.sendFile(filePath);
         } else {
           res.status(404).send("Asset not found");
@@ -130,6 +136,9 @@ const plugin: Plugin = {
         }
 
         if (fs.existsSync(filePath)) {
+          // Set headers to allow assets to be loaded in frames
+          res.setHeader("X-Frame-Options", "SAMEORIGIN");
+          res.setHeader("Content-Security-Policy", "frame-ancestors 'self' http://localhost:* https://localhost:*");
           res.sendFile(filePath);
         } else {
           res.status(404).send("Asset not found");

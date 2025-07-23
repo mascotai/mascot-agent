@@ -71,7 +71,12 @@
       "mcp__mcp-router__fetch_generic_documentation",
       "Bash(chmod:*)",
       "Bash(docker build:*)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(docker-compose:*)",
+      "Bash(nginx:*)",
+      "Bash(curl -I \"http://localhost/api/panels/connections?agentId=test\")",
+      "Bash(curl -I \"http://localhost:3001/api/panels/connections?agentId=test\")",
+      "Bash(find /Users/yohairosen/Workspace/Projects/mascotai/mascot-agent -name \"*.env*\" -o -name \"docker-compose*\")"
     ],
     "deny": []
   }

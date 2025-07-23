@@ -1,7 +1,12 @@
 {
-  "name": "@mascotai/plugin-connections",
+  "name": "plugin-connections",
   "version": "1.0.0",
   "description": "Connection management plugin for Twitter authentication and other services",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mascotai/mascot-agent.git",
+    "directory": "plugins/plugin-connections"
+  },
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -29,6 +34,7 @@
     "@elizaos/plugin-sql": "*"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.0.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.37.0",
     "lru-cache": "^11.0.0",

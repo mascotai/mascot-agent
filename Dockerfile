@@ -15,17 +15,21 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g bun@1.2.5 @elizaos/cli@latest
+RUN npm install -g bun @elizaos/cli@latest
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-COPY package.json bun.lock* bunfig.toml* tsconfig.json* ./
+COPY package.json bun.lock* bunfig.toml* tsconfig.json* tsup.config.ts ./
 COPY plugins/plugin-connections/package.json ./plugins/plugin-connections/
 
-RUN SKIP_POSTINSTALL=1 bun install --no-cache
+RUN bun install
 
 COPY . .
 
+# Build the plugin first (including frontend)  
+RUN cd plugins/plugin-connections && bun install && bun run build
+
+# Build the main project
 RUN bun run build
 
 FROM node:23.3.0-slim
@@ -45,11 +49,14 @@ RUN apt-get update && \
 RUN npm install -g bun@1.2.5 @elizaos/cli@latest
 
 COPY --from=builder /app/package.json ./
+COPY --from=builder /app/bun.lock* ./
 COPY --from=builder /app/tsconfig.json ./
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/characters ./characters
 COPY --from=builder /app/src ./src
+COPY --from=builder /app/plugins ./plugins
+
+# Install dependencies to recreate symlinks for local plugins
+RUN bun install
 
 ENV NODE_ENV=production
 
@@ -60,6 +67,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 3000
 EXPOSE 50000-50100/udp
 
-# Use ElizaOS CLI for production start with production character and explicit port
-CMD ["elizaos", "start", "--character", "characters/production.json", "--port", "3000"]
+# Use ElizaOS CLI for production start with project and explicit port
+CMD ["elizaos", "start", "--port", "3000"]
 

@@ -24,18 +24,10 @@ export const character: Character = {
   
   // Plugin composition following ElizaOS README + Guide patterns
   plugins: [
-    // REQUIRED: Core functionality (as per ElizaOS README)
-    "@elizaos/plugin-bootstrap", // Essential actions & handlers (REQUIRED)
-    "@elizaos/plugin-sql",       // Memory & database management (REQUIRED)
-
-    // Custom plugins
-    "@mascotai/plugin-connections", // Connection management and Twitter authentication
-
-    // Model provider (following README recommendations)
-    ...(process.env.OPENAI_API_KEY?.trim() ? ["@elizaos/plugin-openai"] : []),
-
-    // Conditional platform plugins (environment-based loading)
-    ...(process.env.TWITTER_API_KEY?.trim() ? ["@elizaos/plugin-twitter"] : []),
+      "@elizaos/plugin-sql",       
+      "@elizaos/plugin-openai",
+      "@elizaos/plugin-bootstrap",
+      "plugin-connections"
   ],
   
   // Settings optimized per ElizaOS README recommendations
