@@ -75,8 +75,6 @@ jobs:
           
           # Create production docker-compose.yml with nginx and registry image
           cat > deploy/docker-compose.yml << EOF
-          version: '3.8'
-          
           services:
             nginx:
               image: nginx:alpine

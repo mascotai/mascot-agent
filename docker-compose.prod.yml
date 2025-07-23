@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   nginx:
     image: nginx:alpine
@@ -16,9 +14,7 @@ services:
       - mascot-network
 
   mascot-agent:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/yohairosen/mascot-agent/mascot-agent:latest
     container_name: mascot-agent
     restart: unless-stopped
     environment:
