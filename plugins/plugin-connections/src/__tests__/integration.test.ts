@@ -11,8 +11,8 @@ import {
   mock,
   spyOn,
 } from "bun:test";
-import { character } from "../character";
-import plugin from "../../plugins/plugin-connections/src/plugin";
+import { character } from "../../../../src/character";
+import plugin from "../plugin";
 
 // Set up spies on logger
 beforeAll(() => {

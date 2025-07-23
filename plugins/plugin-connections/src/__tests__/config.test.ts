@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach, mock } from "bun:test";
-import plugin from "../../plugins/plugin-connections/src/plugin";
+import plugin from "../plugin";
 import { z } from "zod";
-import { createMockRuntime } from "./utils/core-test-utils";
+import { createMockRuntime } from "../../../../src/__tests__/utils/core-test-utils";
 
 // Mock logger
 mock.module("@elizaos/core", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
-import plugin from "../../plugins/plugin-connections/src/plugin";
+import plugin from "../plugin";
 
 describe("Plugin Routes", () => {
   it("should have routes defined", () => {

@@ -27,7 +27,8 @@
     "build:backend": "tsup",
     "build:frontend": "vite build",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "bun test src/__tests__/"
   },
   "peerDependencies": {
     "@elizaos/core": "*",

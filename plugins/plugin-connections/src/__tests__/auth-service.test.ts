@@ -1,5 +1,5 @@
 import { describe, it, expect, mock } from "bun:test";
-import { AuthService } from "../../plugins/plugin-connections/src/services/auth.service";
+import { AuthService } from "../services/auth.service";
 import type { IAgentRuntime } from "@elizaos/core";
 
 describe("AuthService", () => {

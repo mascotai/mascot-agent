@@ -7,7 +7,7 @@ import {
   mock,
   spyOn,
 } from "bun:test";
-import plugin from "../../plugins/plugin-connections/src/plugin";
+import plugin from "../plugin";
 // StarterService doesn't exist in our connections plugin
 import { logger } from "@elizaos/core";
 import type { IAgentRuntime, Memory, State } from "@elizaos/core";
