@@ -70,12 +70,12 @@ describe("Project Structure Validation", () => {
       );
 
       // Check package name
-      expect(packageJson.name).toBe("@elizaos/project-starter");
+      expect(packageJson.name).toBe("mascot-agent");
 
       // Check scripts
       expect(packageJson.scripts).toHaveProperty("build");
       expect(packageJson.scripts).toHaveProperty("test");
-      expect(packageJson.scripts).toHaveProperty("test:coverage");
+      expect(packageJson.scripts).toHaveProperty("type-check");
 
       // Check dependencies
       expect(packageJson.dependencies).toHaveProperty("@elizaos/core");

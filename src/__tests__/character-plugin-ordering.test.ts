@@ -253,7 +253,9 @@ describe("Project Starter Character Plugin Ordering", () => {
       plugins.forEach((plugin) => {
         expect(typeof plugin).toBe("string");
         // Allow both ElizaOS plugins and custom plugins
-        expect(plugin).toMatch(/^(@elizaos\/plugin-|twitter-auth)/);
+        expect(plugin).toMatch(
+          /^(@elizaos\/plugin-|twitter-auth|plugin-connections)/,
+        );
       });
     });
 
@@ -334,7 +336,7 @@ describe("Project Starter Character Plugin Ordering", () => {
 
   describe("Character Properties Validation", () => {
     it("should have all required character properties", () => {
-      expect(character.name).toBe("Eliza");
+      expect(character.name).toBe("MascotAgent");
       expect(Array.isArray(character.plugins)).toBe(true);
       expect(typeof character.system).toBe("string");
       expect(Array.isArray(character.bio)).toBe(true);

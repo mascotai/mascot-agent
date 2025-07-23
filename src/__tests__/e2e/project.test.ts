@@ -50,9 +50,9 @@ export class ProjectTestSuite implements TestSuite {
           }
 
           // Verify the character has the expected name
-          if (character.name !== "Eliza") {
+          if (character.name !== "MascotAgent") {
             throw new Error(
-              `Expected character name 'Eliza', got '${character.name}'`,
+              `Expected character name 'MascotAgent', got '${character.name}'`,
             );
           }
 

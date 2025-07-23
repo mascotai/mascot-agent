@@ -57,7 +57,7 @@
     "build": "tsc --noEmit && tsup",
     "lint": "prettier --write ./src",
     "type-check": "tsc --noEmit",
-    "test": "echo 'Tests temporarily disabled due to Pino logger compatibility issue' && exit 0",
+    "test": "elizaos test",
     "docker:build": "docker build -t mascot-agent:latest .",
     "docker:up": "docker-compose up -d",
     "docker:up:prod": "docker-compose -f docker-compose.prod.yml up -d",
