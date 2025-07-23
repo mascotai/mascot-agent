@@ -28,13 +28,14 @@ export const character: Character = {
     "@elizaos/plugin-bootstrap", // Essential actions & handlers (REQUIRED)
     "@elizaos/plugin-sql",       // Memory & database management (REQUIRED)
 
+    // Custom plugins
+    "@mascotai/plugin-connections", // Connection management and Twitter authentication
+
     // Model provider (following README recommendations)
     ...(process.env.OPENAI_API_KEY?.trim() ? ["@elizaos/plugin-openai"] : []),
 
     // Conditional platform plugins (environment-based loading)
     ...(process.env.TWITTER_API_KEY?.trim() ? ["@elizaos/plugin-twitter"] : []),
-    
-    // Custom plugins loaded via index.ts project pattern
   ],
   
   // Settings optimized per ElizaOS README recommendations

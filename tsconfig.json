@@ -28,8 +28,7 @@
     }
   },
   "include": [
-    "src/**/*.ts",
-    "plugins/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "dist",
