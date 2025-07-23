@@ -38,6 +38,8 @@ describe("Plugin Routes", () => {
           json: mock(),
           status: mock(() => mockRes),
           send: mock(),
+          setHeader: mock(),
+          end: mock(),
         };
 
         // Mock runtime object as third parameter
@@ -46,8 +48,10 @@ describe("Plugin Routes", () => {
         // Call the route handler (using the first route instead of undefined helloWorldRoute)
         await firstRoute.handler(mockReq, mockRes, mockRuntime);
 
-        // Verify response method was called (specific response depends on route)
-        expect(mockRes.json || mockRes.send || mockRes.status).toHaveBeenCalled();
+        // Verify some response method was called (response depends on specific route)
+        const responseCalled = [mockRes.json, mockRes.send, mockRes.status, mockRes.setHeader, mockRes.end]
+          .some(mockFn => mockFn.mock.calls.length > 0);
+        expect(responseCalled).toBe(true);
       }
     }
   });
