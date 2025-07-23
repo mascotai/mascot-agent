@@ -138,41 +138,83 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          timeout: 300s
+          timeout: 600s
           script: |
             set -e
             
             echo "🚀 Starting MascotAgent deployment..."
             
+            # Install Docker if not present
+            if ! command -v docker &> /dev/null; then
+              echo "📦 Installing Docker..."
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sudo sh get-docker.sh
+              sudo usermod -aG docker $USER
+              
+              # Install Docker Compose
+              echo "📦 Installing Docker Compose..."
+              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+              
+              # Start Docker service
+              sudo systemctl start docker
+              sudo systemctl enable docker
+              
+              echo "✅ Docker installation completed"
+            else
+              echo "✅ Docker is already installed"
+            fi
+            
             cd ~/mascot-agent
             
-            # Login to container registry on VPS
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            # Login to container registry on VPS (use sudo if needed for new Docker install)
+            if groups | grep -q docker; then
+              echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            else
+              echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            fi
             
             # Stop existing container if running
             echo "🔄 Stopping existing container..."
-            docker-compose down || true
+            if groups | grep -q docker; then
+              docker-compose down || true
+            else
+              sudo docker-compose down || true
+            fi
             
             # Pull new image
             echo "📦 Pulling new Docker image..."
-            docker-compose pull
+            if groups | grep -q docker; then
+              docker-compose pull
+            else
+              sudo docker-compose pull
+            fi
             
             # Start new container
             echo "🚀 Starting MascotAgent container with ElizaOS..."
-            docker-compose up -d
+            if groups | grep -q docker; then
+              docker-compose up -d
+            else
+              sudo docker-compose up -d
+            fi
             
             # Wait for health check
             echo "⏳ Waiting for ElizaOS initialization..."
             sleep 30
             
             # Verify ElizaOS deployment
-            if docker-compose ps | grep -q "Up"; then
+            DOCKER_CMD=""
+            if ! groups | grep -q docker; then
+              DOCKER_CMD="sudo"
+            fi
+            
+            if $DOCKER_CMD docker-compose ps | grep -q "Up"; then
               echo "✅ ElizaOS deployment successful! MascotAgent is running."
               
               # Show ElizaOS status
-              docker-compose ps
+              $DOCKER_CMD docker-compose ps
               echo "📋 ElizaOS startup logs:"
-              docker-compose logs --tail=15
+              $DOCKER_CMD docker-compose logs --tail=15
               
               # Test ElizaOS web UI through nginx
               echo "🏥 Checking ElizaOS web UI status..."
@@ -191,16 +233,16 @@ jobs:
               fi
               
               # Cleanup old images
-              docker image prune -f
+              $DOCKER_CMD docker image prune -f
               
             else
               echo "❌ ElizaOS deployment failed! Container not running properly."
               echo "📋 ElizaOS error logs:"
-              docker-compose logs --tail=50
+              $DOCKER_CMD docker-compose logs --tail=50
               exit 1
             fi
             
             # Logout from registry
-            docker logout ${{ env.REGISTRY }}
+            $DOCKER_CMD docker logout ${{ env.REGISTRY }}
             
             echo "🎉 MascotAgent deployment completed successfully!"
