@@ -1,6 +1,24 @@
-version: '3.8'
-
 services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: mascot-postgres-local
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=mascot_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mascot-network
+
   mascot-agent:
     build:
       context: .
@@ -12,6 +30,9 @@ services:
     environment:
       - NODE_ENV=production
       - ELIZA_UI_ENABLE=true
+      - POSTGRES_URL=postgresql://postgres:password@postgres:5432/mascot_dev
+      # Enable debug logging
+      - DEBUG=*
     env_file:
       - .env
     volumes:
@@ -25,6 +46,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - mascot-network
 
@@ -33,6 +57,8 @@ networks:
     driver: bridge
 
 volumes:
+  postgres_data:
+    driver: local
   logs:
     driver: local
   data:

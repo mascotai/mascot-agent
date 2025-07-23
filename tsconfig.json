@@ -29,16 +29,13 @@
   },
   "include": [
     "src/**/*.ts",
-    "plugins/plugin-connections/**/*.ts"
+    "plugins/**/*.ts"
   ],
   "exclude": [
     "dist",
     "node_modules",
     "src/__tests__/**/*",
     "src/**/cypress/**/*",
-    "plugins/plugin-twitter-fork/**/*",
-    "plugins/plugin-connections/frontend/**/*",
-    "plugins/*/dist/**/*",
     "**/*.test.ts",
     "**/*.spec.ts",
     "**/*.tsx"

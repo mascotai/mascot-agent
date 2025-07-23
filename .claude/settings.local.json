@@ -69,7 +69,9 @@
       "Bash(psql:*)",
       "Bash(node:*)",
       "mcp__mcp-router__fetch_generic_documentation",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(docker build:*)",
+      "Bash(docker compose:*)"
     ],
     "deny": []
   }

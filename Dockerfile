@@ -15,13 +15,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g bun@1.2.5 turbo@2.3.3 @elizaos/cli@latest
+RUN npm install -g bun@1.2.5 @elizaos/cli@latest
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-COPY package.json bun.lock* bunfig.toml* turbo.json* tsconfig.json* ./
+COPY package.json bun.lock* bunfig.toml* tsconfig.json* ./
 COPY plugins/plugin-connections/package.json ./plugins/plugin-connections/
-COPY scripts ./scripts
 
 RUN SKIP_POSTINSTALL=1 bun install --no-cache
 
@@ -43,14 +42,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g bun@1.2.5 turbo@2.3.3 @elizaos/cli@latest
+RUN npm install -g bun@1.2.5 @elizaos/cli@latest
 
 COPY --from=builder /app/package.json ./
-COPY --from=builder /app/turbo.json ./
 COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/characters ./characters
 COPY --from=builder /app/src ./src
 
