@@ -7,8 +7,8 @@ import {
   documentTestResult,
   runCoreActionTests,
 } from "./utils/core-test-utils";
-import { character } from "../index";
-import plugin from "../plugin";
+import { character } from "../character";
+import plugin from "../../plugins/plugin-connections/src/plugin";
 
 /**
  * Creates an enhanced mock runtime for testing that includes the project's

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, mock } from "bun:test";
-import plugin from "../plugin";
+import plugin from "../../plugins/plugin-connections/src/plugin";
 import { z } from "zod";
 import { createMockRuntime } from "./utils/core-test-utils";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, mock } from "bun:test";
-import plugin from "../plugin";
+import plugin from "../../plugins/plugin-connections/src/plugin";
 import { logger } from "@elizaos/core";
 
 // Mock logger
