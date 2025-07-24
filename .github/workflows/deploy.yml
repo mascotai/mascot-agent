@@ -67,6 +67,10 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Set image tag
+        id: image_tag
+        run: echo "IMAGE_TAG=$(echo ${{ steps.meta.outputs.tags }} | head -n 1)" >> $GITHUB_ENV
+
       - name: Create deployment files
         run: |
           mkdir -p deploy
@@ -91,7 +95,7 @@ jobs:
                 - mascot-network
           
             mascot-agent:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tags }}
+              image: ${{ env.IMAGE_TAG }}
               container_name: mascot-agent
               restart: unless-stopped
               environment:
