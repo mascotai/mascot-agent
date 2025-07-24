@@ -21,7 +21,6 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 
 COPY package.json bun.lockb bunfig.toml tsconfig.json tsup.config.ts ./
 COPY plugins ./plugins
-COPY plugins ./plugins
 
 RUN bun install
 
