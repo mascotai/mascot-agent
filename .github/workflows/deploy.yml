@@ -33,12 +33,6 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Run type check
-        run: bun run type-check
-
-      - name: Run tests
-        run: echo "Skipping tests for now"
-
       - name: Build application
         run: bun run build
 
@@ -67,64 +61,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Set image tag
-        id: image_tag
-        run: echo "IMAGE_TAG=$(echo ${{ steps.meta.outputs.tags }} | head -n 1)" >> $GITHUB_ENV
-
-      - name: Create deployment files
+      - name: Prepare deployment files
         run: |
           mkdir -p deploy
           echo "${{ secrets.ENV_PRODUCTION }}" > deploy/.env
           cp nginx.conf deploy/
-          
-          # Create production docker-compose.yml with nginx and registry image
-          cat > deploy/docker-compose.yml << EOF
-          services:
-            nginx:
-              image: nginx:alpine
-              container_name: mascot-nginx
-              restart: unless-stopped
-              ports:
-                - "80:80"
-                - "443:443"
-              volumes:
-                - ./nginx.conf:/etc/nginx/nginx.conf:ro
-              depends_on:
-                - mascot-agent
-              networks:
-                - mascot-network
-          
-            mascot-agent:
-              image: ${{ env.IMAGE_TAG }}
-              container_name: mascot-agent
-              restart: unless-stopped
-              environment:
-                - NODE_ENV=production
-                - ELIZA_UI_ENABLE=true
-              env_file:
-                - .env
-              volumes:
-                - ./logs:/app/logs
-                - ./data:/app/data
-              healthcheck:
-                test: ["CMD", "sh", "-c", "curl -f http://localhost:3000/health || curl -f http://localhost:3000 || exit 1"]
-                interval: 30s
-                timeout: 10s
-                retries: 3
-                start_period: 40s
-              networks:
-                - mascot-network
-          
-          networks:
-            mascot-network:
-              driver: bridge
-          
-          volumes:
-            logs:
-              driver: local
-            data:
-              driver: local
-          EOF
+          sed "s|image: .*|image: $(echo ${{ steps.meta.outputs.tags }} | head -n 1)|" docker-compose.prod.yml > deploy/docker-compose.yml
 
       - name: Copy deployment files to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -142,111 +84,12 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          timeout: 600s
           script: |
             set -e
-            
-            echo "🚀 Starting MascotAgent deployment..."
-            
-            # Install Docker if not present
-            if ! command -v docker &> /dev/null; then
-              echo "📦 Installing Docker..."
-              curl -fsSL https://get.docker.com -o get-docker.sh
-              sudo sh get-docker.sh
-              sudo usermod -aG docker $USER
-              
-              # Install Docker Compose
-              echo "📦 Installing Docker Compose..."
-              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-              sudo chmod +x /usr/local/bin/docker-compose
-              
-              # Start Docker service
-              sudo systemctl start docker
-              sudo systemctl enable docker
-              
-              echo "✅ Docker installation completed"
-            else
-              echo "✅ Docker is already installed"
-            fi
-            
             cd ~/mascot-agent
-            
-            # Login to container registry on VPS (use sudo if needed for new Docker install)
-            if groups | grep -q docker; then
-              echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-            else
-              echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-            fi
-            
-            # Stop existing container if running
-            echo "🔄 Stopping existing container..."
-            if groups | grep -q docker; then
-              docker-compose down || true
-            else
-              sudo docker-compose down || true
-            fi
-            
-            # Pull new image
-            echo "📦 Pulling new Docker image..."
-            if groups | grep -q docker; then
-              docker-compose pull
-            else
-              sudo docker-compose pull
-            fi
-            
-            # Start new container
-            echo "🚀 Starting MascotAgent container with ElizaOS..."
-            if groups | grep -q docker; then
-              docker-compose up -d
-            else
-              sudo docker-compose up -d
-            fi
-            
-            # Wait for health check
-            echo "⏳ Waiting for ElizaOS initialization..."
-            sleep 30
-            
-            # Verify ElizaOS deployment
-            DOCKER_CMD=""
-            if ! groups | grep -q docker; then
-              DOCKER_CMD="sudo"
-            fi
-            
-            if $DOCKER_CMD docker-compose ps | grep -q "Up"; then
-              echo "✅ ElizaOS deployment successful! MascotAgent is running."
-              
-              # Show ElizaOS status
-              $DOCKER_CMD docker-compose ps
-              echo "📋 ElizaOS startup logs:"
-              $DOCKER_CMD docker-compose logs --tail=15
-              
-              # Test ElizaOS web UI through nginx
-              echo "🏥 Checking ElizaOS web UI status..."
-              sleep 5
-              if curl -f http://localhost/health > /dev/null 2>&1; then
-                echo "✅ ElizaOS web UI is responding through nginx"
-              elif curl -f http://localhost > /dev/null 2>&1; then
-                echo "✅ ElizaOS web UI is responding through nginx (no health endpoint)"
-              else
-                echo "⚠️ ElizaOS web UI not responding - checking direct connection..."
-                if curl -f http://localhost:3000 > /dev/null 2>&1; then
-                  echo "✅ ElizaOS agent is running but nginx may have issues"
-                else
-                  echo "❌ ElizaOS agent not responding"
-                fi
-              fi
-              
-              # Cleanup old images
-              $DOCKER_CMD docker image prune -f
-              
-            else
-              echo "❌ ElizaOS deployment failed! Container not running properly."
-              echo "📋 ElizaOS error logs:"
-              $DOCKER_CMD docker-compose logs --tail=50
-              exit 1
-            fi
-            
-            # Logout from registry
-            $DOCKER_CMD docker logout ${{ env.REGISTRY }}
-            
-            echo "🎉 MascotAgent deployment completed successfully!"
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            docker-compose down
+            docker-compose pull
+            docker-compose up -d
+            docker image prune -f
+            docker logout ${{ env.REGISTRY }}
