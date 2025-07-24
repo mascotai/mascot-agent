@@ -91,7 +91,7 @@ jobs:
                 - mascot-network
           
             mascot-agent:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tags }}
               container_name: mascot-agent
               restart: unless-stopped
               environment:
