@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Deploy MascotAgent to Azure VPS
 
 on:
   push:
@@ -11,8 +11,10 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
     permissions:
       contents: read
       packages: write
@@ -34,8 +36,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -44,3 +47,39 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Run tests
+        run: bun run test
+
+      - name: Prepare deployment files
+        run: |
+          mkdir -p deploy
+          echo "${{ secrets.ENV_PRODUCTION }}" > deploy/.env
+          cp nginx.conf deploy/
+          sed "s|image: .*|image: $(echo ${{ steps.meta.outputs.tags }} | head -n 1)|" docker-compose.prod.yml > deploy/docker-compose.yml
+
+      - name: Copy deployment files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          source: "deploy/*"
+          target: "~/mascot-agent/"
+          strip_components: 1
+
+      - name: Deploy MascotAgent on Azure VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd ~/mascot-agent
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            docker-compose down
+            docker-compose pull
+            docker-compose up -d
+            docker image prune -f
+            docker logout ${{ env.REGISTRY }}
