@@ -66,8 +66,8 @@ jobs:
           script: |
             set -e
             cd ~/mascot-agent
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
-            docker image prune -f
-            docker logout ${{ env.REGISTRY }}
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            sudo docker compose -f docker-compose.prod.yml pull
+            sudo docker compose -f docker-compose.prod.yml up -d
+            sudo docker image prune -f
+            sudo docker logout ${{ env.REGISTRY }}
