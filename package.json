@@ -54,7 +54,7 @@
     "start:prod": "elizaos start --character characters/production.json --port 3000",
     "start:local": "elizaos start --character characters/local.json --port 3000",
     "dev": "elizaos dev --port 3000",
-    "build": "tsc --noEmit && tsup",
+    "build": "tsc -p tsconfig.build.json --noEmit && tsup --config tsup.config.ts",
     "lint": "prettier --write ./src",
     "type-check": "tsc --noEmit",
     "test": "elizaos test",
