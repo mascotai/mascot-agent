@@ -49,7 +49,6 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/bun.lock* ./
 COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src ./src
 COPY --from=builder /app/plugins ./plugins
 
 # Install dependencies to recreate symlinks for local plugins
@@ -66,4 +65,3 @@ EXPOSE 50000-50100/udp
 
 # Use ElizaOS CLI for production start with project and explicit port
 CMD ["elizaos", "start", "--port", "3000"]
-
