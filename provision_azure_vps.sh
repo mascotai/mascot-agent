@@ -6,10 +6,10 @@ set -e
 # --- Variables - You can change these ---
 
 # The name of the resource group, based on your org and project.
-RESOURCE_GROUP_NAME="mascotai-mascot-agent-prod-rg-v2"
+RESOURCE_GROUP_NAME="mascotai-mascot-agent-prod-rg"
 
 # The name of the Virtual Machine, based on your org and project.
-VM_NAME="mascotai-mascot-agent-prod-vm-v2"
+VM_NAME="mascotai-mascot-agent-prod-vm"
 
 # The Azure region where the resources will be created.
 LOCATION="eastus"
