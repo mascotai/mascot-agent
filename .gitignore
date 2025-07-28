@@ -118,3 +118,4 @@ playwright-report/
 
 # Worktrees folder - contains external git repositories
 worktrees/
+.env.prod
