@@ -24,7 +24,6 @@ COPY plugins ./plugins
 
 RUN bun install
 
-COPY tsconfig.build.json ./
 COPY . .
 
 # Build the main project
