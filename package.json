@@ -3,8 +3,8 @@
   "description": "MascotAgent - ElizaOS project with Azure integration and custom authentication",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/src/index.js",
-  "module": "dist/src/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "keywords": [
     "elizaos",
