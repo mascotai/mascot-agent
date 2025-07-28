@@ -14,7 +14,7 @@ services:
       - mascot-network
 
   mascot-agent:
-    image: ghcr.io/yohairosen/mascot-agent/mascot-agent:latest
+    image: ghcr.io/yohairosen/mascot-agent:latest
     container_name: mascot-agent
     restart: unless-stopped
     environment:
