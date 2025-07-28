@@ -19,11 +19,12 @@ RUN npm install -g bun @elizaos/cli@latest
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-COPY package.json bun.lock bunfig.toml tsconfig.json tsup.config.ts ./
+COPY package.json bun.lock bunfig.toml tsconfig.json tsconfig.build.json tsup.config.ts ./
 COPY plugins ./plugins
 
 RUN bun install
 
+COPY tsconfig.build.json ./
 COPY . .
 
 # Build the main project
