@@ -3,17 +3,12 @@
   "description": "MascotAgent - ElizaOS project with Azure integration and custom authentication",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
+  "main": "dist/src/index.js",
+  "module": "dist/src/index.js",
   "types": "dist/index.d.ts",
   "keywords": [
-    "elizaos",
-    "agent",
-    "ai",
-    "azure",
-    "twitter",
-    "authentication",
-    "mascot"
+    "project",
+    "elizaos"
   ],
   "repository": {
     "type": "git",
@@ -39,35 +34,41 @@
     "@elizaos/plugin-sql": "latest",
     "@elizaos/plugin-twitter": "latest",
     "plugin-connections": "file:./plugins/plugin-connections",
-    "pg": "^8.12.0",
     "zod": "3.24.2"
   },
   "devDependencies": {
-    "@types/lru-cache": "^7.10.10",
-    "@types/pg": "^8.11.10",
     "prettier": "3.5.3",
     "tsup": "8.5.0",
+    
     "typescript": "^5.6.3"
   },
   "scripts": {
-    "start": "elizaos start --port 3000",
-    "start:prod": "elizaos start --character characters/production.json --port 3000",
-    "start:local": "elizaos start --character characters/local.json --port 3000",
-    "dev": "elizaos dev --port 3000",
+    "start": "elizaos start",
+    "dev": "elizaos dev",
     "build": "tsc -p tsconfig.build.json --noEmit && tsup --config tsup.config.ts",
+    "prebuild": "cd plugins/plugin-connections && bun install && bun run build",
     "lint": "prettier --write ./src",
     "type-check": "tsc --noEmit",
-    "test": "elizaos test",
-    "docker:build": "docker build -t mascot-agent:latest .",
-    "docker:up": "docker-compose up -d",
-    "docker:up:prod": "docker-compose -f docker-compose.prod.yml up -d",
-    "docker:down": "docker-compose down",
-    "docker:down:prod": "docker-compose -f docker-compose.prod.yml down",
-    "docker:logs": "docker-compose logs -f",
-    "docker:logs:prod": "docker-compose -f docker-compose.prod.yml logs -f"
+    "type-check:watch": "tsc --noEmit --watch",
+    "test:component": "bun run test:install && bun test",
+    "test:e2e": "bun run test:install && bun test",
+    "test": "bun run test:install && bun run test:component && bun run test:e2e",
+    "test:coverage": "bun run test:install && bun test --coverage",
+    "test:watch": "bun run test:install && bun test --watch",
+    "test:install": "node scripts/install-test-deps.js",
+    "format": "prettier --write ./src",
+    "format:check": "prettier --check ./src",
+    "check-all": "bun run type-check && bun run format:check && bun run test",
+    "cy:open": "bun run test:install && cypress open",
+    "cy:run": "bun run test:install && cypress run --component",
+    "cy:test": "bun run test:install && cypress run --component --reporter spec",
+    "cypress:component": "bun run test:install && cypress run --component",
+    "cypress:e2e": "bun run test:install && cypress run --e2e",
+    "cypress:open": "bun run test:install && cypress open"
   },
   "publishConfig": {
     "access": "public"
   },
-  "gitHead": "b165ad83e5f7a21bc1edbd83374ca087e3cd6b33"
+  "gitHead": "b165ad83e5f7a21bc1edbd83374ca087e3cd6b33",
+  "packageManager": "bun@1.2.18"
 }

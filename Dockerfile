@@ -15,20 +15,17 @@ RUN apt-get update && \
 RUN npm install -g bun @elizaos/cli@latest
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-# Copy dependency definition files first to leverage Docker cache
-COPY package.json bun.lock bunfig.toml tsconfig.json tsconfig.build.json tsup.config.ts ./
-
-# Copy local plugins before installing dependencies
-COPY plugins ./plugins
+# Copy the rest of the source code
+COPY . .
 
 # Install ALL dependencies, including devDependencies needed for the build
 RUN bun install
 
-# Copy the rest of the source code
-COPY . .
-
 # Build the main project, creating the /app/dist directory
 RUN bun run build
+
+# Prune devDependencies to create a production-ready node_modules directory
+  RUN bun install --production
 
 
 # Stage 2: Runner
@@ -49,18 +46,22 @@ RUN npm install -g bun@1.2.5 @elizaos/cli@latest
 
 # Copy dependency definitions
 COPY --from=builder /app/package.json ./
-COPY --from=builder /app/bun.lock* ./
+
 
 # Copy the local plugin source for linking
 COPY --from=builder /app/plugins ./plugins
 
-# Install ONLY production dependencies and do NOT run any build scripts
-RUN bun install --production
+
+
+
+# Copy the production-ready node_modules from the builder stage
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy the compiled application code from the builder stage
 COPY --from=builder /app/dist ./dist
 
 ENV NODE_ENV=production
+ENV ELIZA_TEST_MODE=true
 
 # Health check using standard ElizaOS pattern
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
