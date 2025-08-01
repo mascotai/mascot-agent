@@ -6,7 +6,7 @@ set -e
 # --- Variables - You can change these ---
 
 # The base name for all resources.
-BASE_NAME="mascotai-mascot-agent"
+BASE_NAME="mascotai-agent"
 
 # The Azure region where the resources will be created.
 LOCATION="westus3"

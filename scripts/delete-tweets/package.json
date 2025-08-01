@@ -1,0 +1,14 @@
+{
+  "name": "twitter-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for interacting with the Twitter API.",
+  "main": "delete-tweets.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "node delete-tweets.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "twitter-api-v2": "^1.17.0"
+  }
+}

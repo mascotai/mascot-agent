@@ -5,8 +5,8 @@ set -e
 
 # --- Variables ---
 # Replace with your actual resource group and VM name if not providing them as arguments
-RESOURCE_GROUP_NAME=${1:-"mascotai-mascot-agent-prod-rg"}
-VM_NAME=${2:-"mascotai-mascot-agent-prod-vm"}
+RESOURCE_GROUP_NAME=${1:-"mascotai-agent-prod-rg-westus3"}
+VM_NAME=${2:-"mascotai-agent-prod-vm"}
 ADMIN_USERNAME=${3:-"mascotadmin"}
 
 echo "Executing setup script on VM: $VM_NAME in resource group: $RESOURCE_GROUP_NAME..."

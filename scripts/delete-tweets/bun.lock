@@ -1,0 +1,17 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "twitter-scripts",
+      "dependencies": {
+        "dotenv": "^16.4.5",
+        "twitter-api-v2": "^1.17.0",
+      },
+    },
+  },
+  "packages": {
+    "dotenv": ["dotenv@16.6.1", "", {}, "sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow=="],
+
+    "twitter-api-v2": ["twitter-api-v2@1.24.0", "", {}, "sha512-RDEiuNwnFirvf4c5f1sysgg0rfMQgekXgKt+/UdbNu+Bs5bJ1VbXkqKzdd2a2lPMlDVDbdGUoe2pOd4n25fFVQ=="],
+  }
+}
